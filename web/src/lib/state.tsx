@@ -1,6 +1,6 @@
 // App state: route + filters live in the URL hash so every view is shareable,
 // e.g.  #/outcome/forestry?year=2024&country=DRC,Gabon
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { Filters } from "./model";
 import { Index } from "./model";
@@ -9,7 +9,7 @@ import { setLang, type Lang } from "./i18n";
 import { setLocale } from "./format";
 
 export interface Route {
-  page: string; // "" | "outcome" | "programmes" | "programme" | "climate" | "quality" | "methodology"
+  page: string; // "" | "outcome" | "programmes" | "programme" | "portfolio" | "project" | "compare" | "factsheet" | "brief" | "climate" | "quality" | "methodology"
   id?: string;
 }
 
@@ -35,10 +35,19 @@ export function useApp(): Ctx {
   return c;
 }
 
-function parseHash(m: Metrics): { route: Route; filters: Filters } {
-  const raw = window.location.hash.replace(/^#\/?/, "");
+/** decodeURIComponent that never throws: a stray "%" in a pasted link must not blank the app. */
+function safeDecode(s: string): string {
+  try {
+    return decodeURIComponent(s);
+  } catch {
+    return s;
+  }
+}
+
+export function parseHash(m: Metrics, hash: string = window.location.hash): { route: Route; filters: Filters } {
+  const raw = hash.replace(/^#\/?/, "");
   const [path, query = ""] = raw.split("?");
-  const [page = "", id] = path.split("/").map(decodeURIComponent);
+  const [page = "", id] = path.split("/").map(safeDecode);
   const params = new URLSearchParams(query);
   const list = (k: string) => (params.get(k) ? params.get(k)!.split(",").filter(Boolean) : []);
   const y = Number(params.get("year"));
@@ -53,7 +62,7 @@ function parseHash(m: Metrics): { route: Route; filters: Filters } {
   };
 }
 
-function toHash(route: Route, f: Filters, m: Metrics): string {
+export function toHash(route: Route, f: Filters, m: Metrics): string {
   const path = [route.page, route.id].filter((x): x is string => !!x).map((x) => encodeURIComponent(x)).join("/");
   const p = new URLSearchParams();
   if (f.year !== m.meta.defaultYear) p.set("year", String(f.year));
@@ -118,25 +127,28 @@ export function AppProvider({ m, q, children }: { m: Metrics; q: Quality | null;
     [m],
   );
 
-  const value: Ctx = {
-    m, q, ix, route, filters, lang, theme,
-    navigate: (r) => {
-      commit(r, filters, true);
-      window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
-    },
-    setFilters: (patch) => commit(route, { ...filters, ...patch }, false),
-    setLangPref: (l) => {
-      setLang(l);
-      setLocale(l);
-      writePref("cafi-lang", l);
-      setLangState(l);
-    },
-    toggleTheme: () => {
-      const next = theme === "dark" ? "light" : "dark";
-      writePref("cafi-theme", next);
-      setTheme(next);
-    },
-  };
+  // Stable actions and a memoised context value, so consumers only re-render when state changes
+  // and effects that depend on these functions (the year "play" interval) are not re-created every tick.
+  const stateRef = useRef({ route, filters, theme });
+  stateRef.current = { route, filters, theme };
+  const navigate = useCallback((r: Route) => {
+    commit(r, stateRef.current.filters, true);
+    window.scrollTo({ top: 0, behavior: "instant" as ScrollBehavior });
+  }, [commit]);
+  const setFilters = useCallback((patch: Partial<Filters>) => commit(stateRef.current.route, { ...stateRef.current.filters, ...patch }, false), [commit]);
+  const setLangPref = useCallback((l: Lang) => {
+    setLang(l);
+    setLocale(l);
+    writePref("cafi-lang", l);
+    setLangState(l);
+  }, []);
+  const toggleTheme = useCallback(() => {
+    const next = stateRef.current.theme === "dark" ? "light" : "dark";
+    writePref("cafi-theme", next);
+    setTheme(next);
+  }, []);
+  const value = useMemo<Ctx>(() => ({ m, q, ix, route, filters, lang, theme, navigate, setFilters, setLangPref, toggleTheme }),
+    [m, q, ix, route, filters, lang, theme, navigate, setFilters, setLangPref, toggleTheme]);
   return <AppCtx.Provider value={value}>{children}</AppCtx.Provider>;
 }
 

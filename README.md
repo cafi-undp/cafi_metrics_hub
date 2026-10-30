@@ -15,9 +15,12 @@ config/reference/            │   validate · re-code to standard     static si
 
 | Page | What it shows |
 |---|---|
-| **Overview** | Committed CO₂ against the portfolio target, headline tiles, progress per outcome, a map of Central Africa (hectares / programmes / CO₂ — click a country to filter), top programmes, hectares over time, and a treemap of where the hectares are |
+| **Overview** | Committed CO₂ against the portfolio target, headline tiles, **What changed in {year}** (three generated statements about the selected year: largest hectare gain, pace and silence, targets reached, climate, first-time reporters), progress per outcome, a map of Central Africa (hectares / programmes / CO₂ — click a country to filter), top programmes, hectares over time, and a treemap of where the hectares are |
+| **Brief** | Briefing mode: the key figures and the generated insights as full-width slides for a meeting, driven with ← → and Esc |
 | **Outcomes** | One tab per standard category (GOV, FOR, FIN, LUT, AGR, ENR, CLM, INC, PPL). Each reported indicator with its standard code, tier, result, target, achievement and year-on-year change; trajectory charts; programme ranking; every sub-indicator row with a status; the category's full list of standard indicators, reported or not |
 | **Programmes** | Timeline of all programme periods; cards or table with average achievement, sparkline and on-track status; a detail page per programme, with its MPTF funding (budget, transfers, spending, status) |
+| **Compare** | Two programmes side by side (`#/compare/<a>~<b>`): achievement, net GHG benefit, budget, expected indicators, every indicator with its meter, hectares by year |
+| **Fact sheet** | One A4 page per programme (`#/factsheet/<id>`): results against targets, expected standard indicators, funding, claims, hectares over time, data-quality items. **Save as PDF** opens the browser's print dialog; the text stays selectable and the links live |
 | **Portfolio** | All CAFI and FONAREDD projects from the MPTF list: approved budget, transfers, spending, status, by country and start year, and which ones report results |
 | **Climate impact** | Two carbon ledgers (inventory = stock changes; intervention = net benefit after leakage and buffer), expected vs realised with p5–p95 bands, by indicator and country, per-unit values by stratum, the factor library with sources, the claims register |
 | **Data quality** | Every check run on the workbook, with the Excel row numbers to fix |
@@ -28,6 +31,7 @@ Everywhere:
 - **Search:** press ⌘K / Ctrl K (or `/`) to jump to any programme, indicator or country.
 - **Every chart:** a table view, CSV download and PNG download.
 - **Display:** English / French, light / dark theme, works on mobile, keyboard-accessible, colour-blind-safe colours.
+- **Robustness:** a malformed link opens the Overview instead of a blank page; unknown pages and ids show a "not found" card; a rendering error is caught and shows a reload button rather than a white screen.
 
 ## Updating the data
 
@@ -54,7 +58,8 @@ The **Publish dashboard** workflow then fetches the workbook every day at 05:17 
 `python -m pipeline.build` reads the `CumulResults` sheet and:
 
 - **Stops the build (errors):**
-  - missing columns;
+  - missing or duplicate columns, an empty sheet;
+  - two programme names that differ only in punctuation (they would collide in the URL);
   - an indicator code or country that isn't in `config/indicators.yml`;
   - text in a numeric cell;
   - negative values.
@@ -97,7 +102,8 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 - **Carbon (method 2.0, `docs/carbon-methodology.md`):** one cohort engine, two ledgers that are never netted.
   - *Inventory ledger* = carbon stock changes within the programme boundary (GHG Protocol Land Sector and Removals logic): gross removals, with emissions from reversals booked separately.
   - *Intervention ledger* = net GHG benefit against a baseline, after leakage and a non-permanence buffer (ISO 14064-2; CCP-approved methodologies VM0047, VM0048, TPDDTEC v4 / VM0050; CDM TOOL33 defaults).
-  - Each year's increase of an indicator is a *cohort* that accumulates carbon up to a cap; harvested systems are credited at the long-term average stock. *Expected (full cycle)* = stock in place × per-unit value over 20 years; *realised to date* = the cohorts at their age. Monte Carlo bands (p5–p95) from the IPCC uncertainties.
+  - Each year's increase of an indicator is a *cohort* that accumulates carbon up to a cap; harvested systems are credited at the long-term average stock. *Expected (full cycle)* = stock in place × per-unit value over 20 years; *realised to date* = the cohorts at their age. Monte Carlo bands (p5–p95) from the IPCC uncertainties, centred on the published value and seeded per indicator and stratum, so a band never depends on the order of the rows.
+  - Flow indicators (people trained, meetings held, tonnes produced) never retire cohorts when they dip; only stock indicators (hectares, devices in use) do. A CLM-02 series that rises every year is flagged as probably cumulative rather than annual.
   - Soil carbon (indicative) and displaced fuelwood (potential) are shown apart and never added to a headline. Defaults flagged `monitored_by` are replaced automatically when a programme reports ENR-02 (usage), ENR-03 (fuel savings) or CLM-02 (observed deforestation → effectiveness); such figures are labelled *ex post*.
 
 ### Changes from the Power BI report — please confirm
@@ -115,9 +121,12 @@ python -m pytest                  # pipeline tests
 cd web
 npm install
 npm run dev                       # http://localhost:5173
-npm test                          # aggregation-rule tests
+npm test                          # aggregation-rule and insight tests
 npm run build                     # → web/dist (static site)
+npm run smoke                     # Playwright + axe: 15 routes × 3 widths × 2 themes against web/dist
 ```
+
+The smoke test fails on console errors, horizontal overflow, a missing `<h1>`, `NaN` or `undefined` in the page, and WCAG A/AA violations found by axe-core (contrast is reported as a warning). CI runs it after the build.
 
 ## Publishing (one-time setup)
 
@@ -133,8 +142,9 @@ config/            indicator catalogue, CO₂ factors, headline figures
 data/              ProjectData.xlsx (source workbook)
 pipeline/          build.py (validate + transform), quality.py, fetch_sharepoint.py
 tests/             pipeline tests (pytest)
-web/src/lib/       data model + aggregation rules (model.ts, tested), i18n, state/URL sync
+web/src/lib/       data model + aggregation rules (model.ts, tested), insights.ts (tested), i18n, state/URL sync
 web/src/components charts, filters, command palette, tables
-web/src/pages/     Overview, Outcomes, Programmes, Programme detail, Climate, Data quality, Methodology
+web/src/pages/     Overview, Brief, Outcomes, Programmes, Programme detail, Compare, Fact sheet, Portfolio, Climate, Data quality, Methodology
+web/scripts/       smoke.mjs (Playwright + axe smoke test of the built site)
 .github/workflows/ ci.yml (checks on every push/PR), deploy.yml (publish to Pages)
 ```

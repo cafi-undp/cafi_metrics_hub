@@ -11,7 +11,9 @@ permissions:
 
 jobs:
   build:
-    runs-on: ubuntu-latest
+    # Pinned: Playwright ships browser dependencies for the LTS images only, and
+    # ubuntu-latest moved to 26.04 before Playwright 1.56 supported it.
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v4
 
@@ -48,3 +50,10 @@ jobs:
           npm run typecheck
           npm test
           npx vite build
+
+      - name: Install the smoke-test browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Smoke-test the built dashboard (console errors, overflow, axe)
+        working-directory: web
+        run: npm run smoke

@@ -13,6 +13,7 @@ import { AfricaMap, MapLegend, type MapDatum } from "../components/AfricaMap";
 import { Link } from "../components/Shell";
 import { ChartCard, CountUp, Meter, Sparkline, type Column } from "../components/ui";
 import type { DataRecord } from "../lib/types";
+import { buildInsights } from "../lib/insights";
 
 type MapMetric = "ha" | "programmes" | "co2";
 
@@ -32,8 +33,9 @@ function NoHectares() {
 }
 
 export function Overview() {
-  const { m, ix, filters, setFilters, lang } = useApp();
+  const { m, ix, filters, setFilters, lang, q } = useApp();
   const { records, yi, year, years } = useFiltered();
+  const insights = useMemo(() => buildInsights(m, ix, records, yi, q, lang).slice(0, 3), [m, ix, records, yi, q, lang]);
   const [mapMetric, setMapMetric] = useState<MapMetric>("ha");
 
   const aggs = useMemo(() => indicatorAggs(ix, records, yi), [ix, records, yi]);
@@ -50,16 +52,16 @@ export function Overview() {
   const mega = net >= 1e6;
   const filtered = filters.countries.length + filters.partners.length + filters.programmes.length > 0;
 
-  // Outcome summaries
-  const outcomes = m.outcomes.map((o) => {
+  // Outcome summaries (trend = one aggregation per year per outcome, so memoised)
+  const outcomes = useMemo(() => m.outcomes.map((o) => {
     const oa = aggs.filter((a) => a.indicator.outcome === o.id);
     const recs = records.filter((r) => ix.outcomeOf(r) === o.id);
     const trend = years.map((_, i) => outcomeAchievement(indicatorAggs(ix, recs, i)));
     return { o, aggs: oa, achievement: outcomeAchievement(oa), trend, recs };
-  }).filter((x) => x.aggs.length);
+  }).filter((x) => x.aggs.length), [m, ix, aggs, records, years]);
 
   // Map data per country
-  const mapData: MapDatum[] = m.countries.filter((c) => c.iso).map((c) => {
+  const mapData: MapDatum[] = useMemo(() => m.countries.filter((c) => c.iso).map((c) => {
     const rc = records.filter((r) => ix.countryOf(r) === c.id);
     const ha = rc.filter((r) => m.meta.areaIndicators.includes(r.indicator)).reduce((s, r) => s + (valueAt(r.values, yi) ?? 0), 0);
     const progs = new Set(rc.map((r) => r.programme)).size;
@@ -70,10 +72,9 @@ export function Overview() {
       display: mapMetric === "ha" ? `${compact(ha)} ha` : mapMetric === "programmes" ? `${progs}` : tco2(c2),
       extra: `${progs} ${t("programmes")}`,
     };
-  }).filter((d) => d.value > 0 || mapMetric === "programmes");
-  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Programmes reporting") : t("Net GHG benefit expected, full cycle");
-
+  }).filter((d) => d.value > 0), [m, ix, records, yi, mapMetric]);
   const isoToCountry = new Map(m.countries.map((c) => [c.iso, c.id]));
+  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Programmes reporting") : t("Net GHG benefit expected, full cycle");
 
   return (
     <>
@@ -92,9 +93,9 @@ export function Overview() {
               <div className="cap">{t("Net GHG benefit expected, full cycle")} · {t("range")} {compact(co2.intervention.low, 2)}–{compact(co2.intervention.high, 2)}</div>
               <div className="cap" style={{ marginTop: 2 }}>{t("Removals in the inventory ledger")}: {compact(co2.inventory.expected, 2)} tCO₂e · {t("Realised to date")}: {compact(co2.intervention.realised, 2)}</div>
               <div className="hero-meter">
-                <div className="track"><div className="fill" style={{ width: `${Math.min(100, (net / anticipated) * 100)}%` }} /></div>
+                <div className="track"><div className="fill" style={{ width: `${anticipated > 0 ? Math.min(100, (net / anticipated) * 100) : 0}%` }} /></div>
                 <div className="row">
-                  <span>{pct(net / anticipated, 1)} {t("of anticipated portfolio total")}</span>
+                  <span>{anticipated > 0 ? pct(net / anticipated, 1) : "–"} {t("of anticipated portfolio total")}</span>
                   <span>{compact(anticipated)} tCO₂e</span>
                 </div>
               </div>
@@ -114,7 +115,7 @@ export function Overview() {
             <div className="hero-tile">
               <div className="v"><CountUp value={m.headline.beneficiaries.value} format={(v) => compact(v)} /></div>
               <div className="l">{t("Direct beneficiaries")}</div>
-              <div className="d" title={m.headline.beneficiaries.source}>{filtered ? t("Portfolio total — not filtered") : t("Portfolio total")}</div>
+              <div className="d" title={m.headline.beneficiaries.source}>{filtered ? t("Portfolio total — not filtered") : t("Portfolio total")} · {t("Source pending")}</div>
             </div>
             <div className="hero-tile">
               <div className="v"><CountUp value={partners} format={(v) => num(v)} /></div>
@@ -122,6 +123,24 @@ export function Overview() {
               <div className="d">{countries} {t("Countries").toLowerCase()}</div>
             </div>
           </div>
+        </div>
+      </section>
+
+      <section className="section" aria-labelledby="changed-h">
+        <div className="section-head">
+          <div>
+            <h2 id="changed-h">{t("What changed in")} {year}</h2>
+            <p className="muted small">{t("Generated from the data at each refresh; each statement links to the rows behind it.")}</p>
+          </div>
+          <Link to={{ page: "brief" }} className="small">{t("Open the briefing")} →</Link>
+        </div>
+        <div className="insights">
+          {insights.map((i) => (
+            <Link key={i.key} to={i.to} className="insight">
+              <div className="k">{i.eyebrow}</div>
+              <p>{i.text}</p>
+            </Link>
+          ))}
         </div>
       </section>
 
@@ -161,7 +180,7 @@ export function Overview() {
       <section className="section grid g-12">
         <ChartCard className="span-7" title={t("Where programmes work")} sub={mapLabel}
           extra={
-            <div className="seg" role="group" aria-label="Map metric" style={{ marginRight: 6 }}>
+            <div className="seg" role="group" aria-label={t("Map metric")} style={{ marginRight: 6 }}>
               {(["ha", "programmes", "co2"] as MapMetric[]).map((k) => (
                 <button key={k} aria-pressed={mapMetric === k} onClick={() => setMapMetric(k)}>
                   {k === "ha" ? "ha" : k === "programmes" ? t("Programmes") : "CO₂"}
@@ -171,7 +190,7 @@ export function Overview() {
           }
           table={{
             cols: [
-              { key: "c", label: t("Country"), value: (d: MapDatum) => d.label },
+              { key: "c", label: t("Country"), value: (d: MapDatum) => d.label, render: (d: MapDatum) => { const id = isoToCountry.get(d.iso); return id ? <button className="link-btn" style={{ padding: 0 }} onClick={() => setFilters({ countries: [id] })}>{d.label}</button> : d.label; } },
               { key: "v", label: mapLabel, numeric: true, value: (d: MapDatum) => Math.round(d.value), render: (d: MapDatum) => d.display },
             ],
             rows: mapData,
@@ -223,9 +242,9 @@ function TopProgrammes({ records, yi }: { records: DataRecord[]; yi: number }) {
       sub={`Top 10 · ${t("Hectares planted, restored or protected").toLowerCase()}`}
       table={{
         cols: [
-          { key: "p", label: t("Programme"), value: (r: (typeof rows)[number]) => r.name },
+          { key: "p", label: t("Programme"), value: (r: (typeof rows)[number]) => r.name, render: (r: (typeof rows)[number]) => <Link to={{ page: "programme", id: r.id }}>{r.name}</Link> },
           ...usedOutcomes.map((o) => ({ key: o.id, label: nameOf(o), numeric: true, value: (r: (typeof rows)[number]) => Math.round(r.byOutcome.get(o.id) ?? 0) })),
-          { key: "t", label: "Total (ha)", numeric: true, value: (r: (typeof rows)[number]) => Math.round(r.total) },
+          { key: "t", label: `${t("Total")} (ha)`, numeric: true, value: (r: (typeof rows)[number]) => Math.round(r.total) },
         ] as Column<(typeof rows)[number]>[],
         rows,
       }}>
@@ -242,7 +261,7 @@ function TopProgrammes({ records, yi }: { records: DataRecord[]; yi: number }) {
                   const r = rows[ps[0].dataIndex];
                   return tipTitle(r.name) + usedOutcomes.filter((o) => r.byOutcome.get(o.id))
                     .map((o) => tipRow(outcomeHex(m, tk, o.id), `${num(r.byOutcome.get(o.id))} ha`, nameOf(o), "rect")).join("") +
-                    `<div style="margin-top:6px;opacity:.8">Total <b>${num(r.total)} ha</b></div>`;
+                    `<div style="margin-top:6px;opacity:.8">${esc(t("Total"))} <b>${num(r.total)} ha</b></div>`;
                 },
               },
               xAxis: { type: "value", ...axisBase(tk), axisLabel: { ...axisBase(tk).axisLabel, formatter: (v: number) => compact(v) }, splitNumber: 3 },
@@ -294,7 +313,7 @@ function HectaresOverTime({ records }: { records: DataRecord[] }) {
     <ChartCard className="span-7" title={t("Hectares over time")} sub={t("Cumulative hectares by outcome")}
       table={{
         cols: [
-          { key: "y", label: "Year", value: (r: { y: number; i: number }) => r.y },
+          { key: "y", label: t("Year"), value: (r: { y: number; i: number }) => r.y },
           ...series.map((s) => ({ key: s.o.id, label: nameOf(s.o), numeric: true, value: (r: { y: number; i: number }) => Math.round(s.values[r.i]) })),
         ] as Column<{ y: number; i: number }>[],
         rows: years.map((y, i) => ({ y, i })),
@@ -363,7 +382,7 @@ function HectareTreemap({ records, yi }: { records: DataRecord[]; yi: number }) 
     <ChartCard className="span-5" title={t("Where the hectares are")} sub={t("By outcome, indicator and programme")}
       table={{
         cols: [
-          { key: "o", label: "Outcome", value: (r: (typeof flat)[number]) => r.o },
+          { key: "o", label: t("Outcome"), value: (r: (typeof flat)[number]) => r.o },
           { key: "i", label: t("Indicator"), value: (r: (typeof flat)[number]) => r.i },
           { key: "p", label: t("Programme"), value: (r: (typeof flat)[number]) => r.p },
           { key: "v", label: "ha", numeric: true, value: (r: (typeof flat)[number]) => Math.round(r.v) },

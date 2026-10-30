@@ -45,6 +45,10 @@ describe("outcomeAchievement", () => {
     expect(outcomeAchievement([mk(0.5), mk(1), mk(null)])).toBeCloseTo(0.75);
     expect(outcomeAchievement([mk(null)])).toBeNull();
   });
+  it("caps each indicator at 100 % so an over-achiever cannot carry the others", () => {
+    const mk = (achievement: number | null) => ({ achievement }) as IndicatorAgg;
+    expect(outcomeAchievement([mk(5), mk(0.1)])).toBeCloseTo(0.55);
+  });
 });
 
 describe("statusOf", () => {

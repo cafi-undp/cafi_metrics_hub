@@ -15,6 +15,7 @@ const PAGES: { route: Route; label: string }[] = [
   { route: { page: "climate" }, label: "Climate impact" },
   { route: { page: "quality" }, label: "Data quality" },
   { route: { page: "methodology" }, label: "Methodology" },
+  { route: { page: "brief" }, label: "Brief" },
 ];
 
 export function Link({ to, children, className, ...rest }: { to: Route; children: ReactNode; className?: string; [k: string]: unknown }) {
@@ -41,7 +42,7 @@ export function Header({ onSearch }: { onSearch: () => void }) {
         <img src="./cafi-logo.png" alt="" width={30} height={30} />
         <b>CAFI</b><span>Metrics Hub</span>
       </Link>
-      <nav className={`nav ${open ? "open" : ""}`} aria-label="Main">
+      <nav className={`nav ${open ? "open" : ""}`} aria-label={t("Main navigation")}>
         {PAGES.map((p) => (
           <Link key={p.label} to={p.route} aria-current={route.page === p.route.page ? "page" : undefined}>{t(p.label)}</Link>
         ))}
@@ -57,7 +58,7 @@ export function Header({ onSearch }: { onSearch: () => void }) {
         <button className="icon-btn" onClick={toggleTheme} aria-label={t("Toggle theme")} title={t("Toggle theme")}>
           {theme === "dark" ? <IconSun /> : <IconMoon />}
         </button>
-        <button className="icon-btn menu-btn" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label="Menu">
+        <button className="icon-btn menu-btn" onClick={() => setOpen((v) => !v)} aria-expanded={open} aria-label={t("Menu")}>
           <IconMenu />
         </button>
       </div>
@@ -79,6 +80,9 @@ function MultiSelect({ label, options, selected, onChange }: {
   const [active, setActive] = useState(0);
   const root = useRef<HTMLDivElement>(null);
   const input = useRef<HTMLInputElement>(null);
+  const trigger = useRef<HTMLButtonElement>(null);
+  const listId = `ms-${label.replace(/\W+/g, "-").toLowerCase()}`;
+  const close = () => { setOpen(false); trigger.current?.focus(); };
   const shown = useMemo(
     () => options.filter((o) => o.label.toLowerCase().includes(query.trim().toLowerCase())),
     [options, query],
@@ -87,12 +91,12 @@ function MultiSelect({ label, options, selected, onChange }: {
   useEffect(() => {
     if (!open) return;
     input.current?.focus();
-    const close = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
-    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") setOpen(false); };
-    document.addEventListener("mousedown", close);
+    const onDown = (e: MouseEvent) => { if (!root.current?.contains(e.target as Node)) setOpen(false); };
+    const esc = (e: KeyboardEvent) => { if (e.key === "Escape") { setOpen(false); trigger.current?.focus(); } };
+    document.addEventListener("mousedown", onDown);
     document.addEventListener("keydown", esc);
     return () => {
-      document.removeEventListener("mousedown", close);
+      document.removeEventListener("mousedown", onDown);
       document.removeEventListener("keydown", esc);
     };
   }, [open]);
@@ -103,7 +107,7 @@ function MultiSelect({ label, options, selected, onChange }: {
 
   return (
     <div ref={root} style={{ position: "relative" }}>
-      <button className="chip-btn" aria-haspopup="listbox" aria-expanded={open} onClick={() => setOpen((v) => !v)}>
+      <button ref={trigger} className="chip-btn" aria-haspopup="listbox" aria-expanded={open} aria-controls={open ? listId : undefined} onClick={() => setOpen((v) => !v)}>
         <span className="label">{label}</span>
         <span style={{ maxWidth: 160, overflow: "hidden", textOverflow: "ellipsis" }}>{summary ?? (selected.length ? "" : t("All"))}</span>
         {selected.length > 1 && <span className="count">{selected.length}</span>}
@@ -111,16 +115,17 @@ function MultiSelect({ label, options, selected, onChange }: {
       </button>
       {open && (
         <div className="popover" onKeyDown={(e) => {
-          if (e.key === "Escape") setOpen(false);
+          if (e.key === "Escape") { e.stopPropagation(); close(); }
           if (e.key === "ArrowDown") { e.preventDefault(); setActive((a) => Math.min(shown.length - 1, a + 1)); }
           if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(0, a - 1)); }
           if (e.key === "Enter" && shown[active]) { e.preventDefault(); toggle(shown[active].id); }
         }}>
           <input ref={input} type="search" placeholder={t("Search…")} value={query} onChange={(e) => setQuery(e.target.value)}
-            aria-label={`${t("Filter by")} ${label}`} />
-          <ul className="option-list" role="listbox" aria-multiselectable>
+            aria-label={`${t("Filter by")} ${label}`} role="combobox" aria-expanded aria-controls={listId} aria-autocomplete="list"
+            aria-activedescendant={shown[active] ? `${listId}-${shown[active].id}` : undefined} />
+          <ul className="option-list" role="listbox" id={listId} aria-multiselectable aria-label={label}>
             {shown.map((o, i) => (
-              <li key={o.id} className="option" role="option" aria-selected={selected.includes(o.id)} data-active={i === active}
+              <li key={o.id} id={`${listId}-${o.id}`} className="option" role="option" aria-selected={selected.includes(o.id)} data-active={i === active}
                 onMouseEnter={() => setActive(i)} onClick={() => toggle(o.id)}>
                 <span className="check">{selected.includes(o.id) && <IconCheck />}</span>
                 {o.color && <i className="dot" style={{ background: o.color }} />}
@@ -140,7 +145,7 @@ function MultiSelect({ label, options, selected, onChange }: {
 }
 
 // ───────────────────────── Filter bar ─────────────────────────
-export function FilterBar() {
+export function FilterBar({ yearOnly = false }: { yearOnly?: boolean }) {
   const { m, ix, filters, setFilters } = useApp();
   const [playing, setPlaying] = useState(false);
 
@@ -172,7 +177,7 @@ export function FilterBar() {
     .sort((a, b) => a.label.localeCompare(b.label));
 
   return (
-    <div className="filterbar" role="region" aria-label="Filters">
+    <div className="filterbar" role="region" aria-label={t("Filters")}>
       <div className="years" role="group" aria-label={t("As of")}>
         <span className="lbl">{t("As of")}</span>
         <button className="play" onClick={() => {
@@ -189,13 +194,16 @@ export function FilterBar() {
           </button>
         ))}
       </div>
+      {!yearOnly && <>
       <MultiSelect label={t("Country")} selected={filters.countries} onChange={(countries) => setFilters({ countries })}
         options={m.countries.map((c) => ({ id: c.id, label: nameOf(c), meta: `${cCount.get(c.id) ?? 0}` }))} />
       <MultiSelect label={t("Partner")} selected={filters.partners} onChange={(partners) => setFilters({ partners })}
         options={m.partners.map((p) => ({ id: p.id, label: p.name, meta: `${pCount.get(p.id) ?? 0}` }))} />
       <MultiSelect label={t("Programme")} selected={filters.programmes} onChange={(programmes) => setFilters({ programmes })}
         options={progOpts} />
-      {any && (
+      </>}
+      {yearOnly && <span className="small muted">{t("This page shows the whole programme; only the year applies.")}</span>}
+      {any && !yearOnly && (
         <button className="link-btn" onClick={() => setFilters({ countries: [], partners: [], programmes: [] })}>
           {t("Clear filters")}
         </button>
@@ -219,6 +227,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 
   const all: Cmd[] = useMemo(() => [
     ...PAGES.map((p) => ({ group: t("Pages"), label: t(p.label), run: () => navigate(p.route) })),
+    { group: t("Pages"), label: t("Compare programmes"), run: () => navigate({ page: "compare" }) },
     ...m.outcomes.map((o) => ({ group: t("Outcomes"), label: nameOf(o), color: outcomeVar(m, o.id), run: () => navigate({ page: "outcome", id: o.id }) })),
     ...m.programmes.map((p) => ({
       group: t("Programmes"), label: p.name, meta: nameOf(ix.countries.get(p.country)!),
@@ -263,14 +272,14 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           if (e.key === "Enter" && shown[active]) run(shown[active]);
         }}>
         <input autoFocus placeholder={t("Search programmes, indicators, countries…")} value={q} onChange={(e) => setQ(e.target.value)}
-          role="combobox" aria-expanded aria-controls="cmd-list" />
+          role="combobox" aria-expanded aria-controls="cmd-list" aria-autocomplete="list" aria-activedescendant={shown[active] ? `cmd-${active}` : undefined} />
         <ul id="cmd-list" ref={listRef} role="listbox">
           {shown.map((c, i) => {
             const head = c.group !== lastGroup ? <li className="grp" role="presentation" key={`g-${c.group}`}>{c.group}</li> : null;
             lastGroup = c.group;
             return [
               head,
-              <li key={`${c.group}-${c.label}`} role="option" aria-selected={i === active} data-active={i === active}
+              <li key={`${c.group}-${c.label}-${c.meta ?? ""}`} id={`cmd-${i}`} role="option" aria-selected={i === active} data-active={i === active}
                 onMouseEnter={() => setActive(i)} onClick={() => run(c)}>
                 {c.color && <i className="dot" style={{ background: c.color }} />}
                 <span>{c.label}</span>
@@ -278,9 +287,9 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
               </li>,
             ];
           })}
-          {!shown.length && <li className="empty">{t("No data for the current filters")}</li>}
+          {!shown.length && <li className="empty">{t("No match")}</li>}
         </ul>
-        <div className="hint"><span>↑↓ navigate</span><span>↵ open</span><span>esc close</span></div>
+        <div className="hint"><span>↑↓ {t("navigate")}</span><span>↵ {t("open")}</span><span>esc {t("close")}</span></div>
       </div>
     </>
   );

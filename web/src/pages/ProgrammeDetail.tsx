@@ -20,7 +20,7 @@ export function ProgrammeDetail({ id }: { id: string }) {
   const aggs = useMemo(() => indicatorAggs(ix, recs, yi), [ix, recs, yi]);
 
   if (!p) {
-    return <div className="card empty" style={{ marginTop: 24 }}>Programme not found. <Link to={{ page: "programmes" }}>{t("Programmes")}</Link></div>;
+    return <div className="card empty" style={{ marginTop: 24 }}>{t("Programme not found.")} <Link to={{ page: "programmes" }}>{t("Programmes")}</Link></div>;
   }
   const achievement = outcomeAchievement(aggs);
   const status = statusOf(achievement, p.start, p.end, filters.year);
@@ -41,11 +41,15 @@ export function ProgrammeDetail({ id }: { id: string }) {
           </div>
           <h1>{p.name}</h1>
           <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 10 }}>
-            <span className="pill">{nameOf(ix.countries.get(p.country)!)}</span>
-            {p.partners.map((x) => <span className="pill" key={x}>{ix.partners.get(x)}</span>)}
+            <span className="pill">{nameOf(ix.countries.get(p.country) ?? { name: p.country })}</span>
+            {p.partners.map((x) => <span className="pill" key={x}>{ix.partners.get(x) ?? x}</span>)}
             <span className="pill num">{p.start}–{p.end}</span>
             <StatusBadge status={status} />
           </div>
+        </div>
+        <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+          <Link to={{ page: "compare", id: `${p.id}~` }} className="chip-btn">{t("Compare")} ⇄</Link>
+          <Link to={{ page: "factsheet", id: p.id }} className="chip-btn">{t("Fact sheet")} ↓</Link>
         </div>
       </div>
 

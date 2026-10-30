@@ -132,8 +132,13 @@ export function indicatorAggs(ix: Index, records: DataRecord[], yi: number): Ind
     .map((i) => ({ indicator: i, records: groups.get(i.code)!, ...aggregate(groups.get(i.code)!, yi) }));
 }
 
+/**
+ * Average achievement of several indicators. Each indicator is capped at 100 % before averaging,
+ * so one indicator far above its target cannot lift the average above what the others justify;
+ * the indicator's own figure stays uncapped where it is shown.
+ */
 export function outcomeAchievement(aggs: IndicatorAgg[]): number | null {
-  const vals = aggs.map((a) => a.achievement).filter((a): a is number => a !== null);
+  const vals = aggs.map((a) => a.achievement).filter((a): a is number => a !== null).map((a) => Math.min(1, a));
   return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
 }
 

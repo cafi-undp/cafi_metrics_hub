@@ -9,6 +9,8 @@ replaces any factor (Tier 3). Records then carry basis "ex post".
 
 from __future__ import annotations
 
+import re
+import zlib
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -31,6 +33,11 @@ MONITORS = {
     "CLM-02": ("deforestation", "sum", "area"),
 }
 PRIVATE_TYPES = ("private sector",)
+# A CLM-02 row is a baseline (not an observation) only when its label starts with one of these words.
+BASELINE_LABEL = re.compile(r"^\s*(baseline|r[ée]f[ée]rence|reference|sc[ée]nario de r[ée]f[ée]rence|counterfactual|contrefactuel)\b", re.I)
+# Which parameter a monitored indicator replaces, by factor id (defor_rate keeps setting the baseline).
+REPLACES = {"usage": "usage", "fuel_savings": "savings", "effectiveness_default": "effectiveness"}
+FLOW_TYPES = ("annual", "flow")
 
 
 def carry(series: list[float | None], yi: int) -> float | None:
@@ -94,9 +101,13 @@ class Monitored:
 class CarbonEngine:
     config: CarbonConfig
     years: list[int]
+    measurement: dict[str, str] = field(default_factory=dict)  # indicator code → "Cumulative / Stock" | "Annual / Flow"
     monitored: dict[str, Monitored] = field(default_factory=dict)
+    notes: list[dict] = field(default_factory=list)  # data-quality items raised while observing
     _bands: dict = field(default_factory=dict)
-    _rng: np.random.Generator = field(default_factory=lambda: np.random.default_rng(SEED))
+
+    def is_flow(self, code: str) -> bool:
+        return any(w in (self.measurement.get(code) or "").casefold() for w in FLOW_TYPES)
 
     # ── monitored indicators ──
     def observe(self, df: pd.DataFrame) -> None:
@@ -123,9 +134,15 @@ class CarbonEngine:
             m.usage = fraction(series(g[g["code"] == "ENR-02"], "mean"))
             m.savings = fraction(series(g[g["code"] == "ENR-03"], "mean"))
             clm = g[g["code"] == "CLM-02"]
-            is_base = clm["label"].str.casefold().str.contains("baseline|référence|reference|contrefactuel|counterfactual", regex=True)
+            is_base = clm["label"].astype(str).map(lambda s: bool(BASELINE_LABEL.match(s)))
             m.defor_observed = series(clm[~is_base], "sum")
             m.defor_baseline = series(clm[is_base], "sum")
+            # CLM-02 is an annual flow (ha/yr). A series that only ever rises over three or more
+            # years looks like a cumulative total entered by mistake, which would drive effectiveness to zero.
+            obs = [v for v in (m.defor_observed or []) if v is not None]
+            if len(obs) >= 3 and all(b > a for a, b in zip(obs, obs[1:])):
+                self.notes.append({"programme": str(prog), "indicator": "CLM-02",
+                                   "detail": "values rise every year; CLM-02 must be entered as hectares deforested per year, not a running total"})
             prot = g[g["code"] == "FOR-04"]
             if not prot.empty:
                 raw = series(prot, "sum")
@@ -155,20 +172,26 @@ class CarbonEngine:
 
     # ── Monte Carlo bands per (indicator, stratum, overrides) ──
     def band(self, code: str, ctx: dict, programme: str | None = None) -> dict:
+        """p5 and p95 of the per-unit value as ratios to the central value.
+
+        Seeded per key, so a band never depends on which record was computed first.
+        Ratios are taken against the central (library) value, which is what the
+        record series are built from, not against the mean of the draws.
+        """
         over = repr(sorted(self.config.overrides.get(programme or "", {}).items())) if programme in self.config.overrides else ""
         key = (code, ctx["country"], ctx["zone"], ctx["soil"], over)
         if key in self._bands:
             return self._bands[key]
         mod, factors = self._resolve(code, ctx, programme)
-        draws = {k: f.sample(N_DRAWS, self._rng) for k, f in factors.items()}
-        if "fnrb" in draws:
-            draws["fnrb"] = np.clip(draws["fnrb"], 0.02, 0.95)
+        rng = np.random.default_rng([SEED, zlib.crc32(repr(key).encode())])
+        draws = {k: f.sample(N_DRAWS, rng) for k, f in factors.items()}
+        central = {k: float(np.asarray(x)) for k, x in mod.per_unit({k: f.value for k, f in factors.items()}).items()}
         pu = mod.per_unit(draws)
         out = {}
         for ledger in LEDGERS:
             arr = np.asarray(pu[ledger], dtype=float)
-            mean = float(arr.mean()) if arr.size else 0.0
-            out[ledger] = [1.0, 1.0] if mean <= 0 else [round(float(np.percentile(arr, 5)) / mean, 3), round(float(np.percentile(arr, 95)) / mean, 3)]
+            c = central[ledger]
+            out[ledger] = [1.0, 1.0] if c <= 0 or not arr.size else [round(float(np.percentile(arr, 5)) / c, 3), round(float(np.percentile(arr, 95)) / c, 3)]
         self._bands[key] = out
         return out
 
@@ -196,6 +219,16 @@ class CarbonEngine:
         mon = self.monitored.get(programme, Monitored())
         used: dict[str, str] = {}
         n = len(values)
+        # Flow indicators (e.g. AGR-01, area cropped per season) are stored cumulated in the sheet like
+        # every other code, but a lower value is a reporting gap, not land taken out: never retire cohorts.
+        flow = self.is_flow(code)
+        if flow:
+            run, acc = [], None
+            for x in values:
+                if x is not None:
+                    acc = x if acc is None else max(acc, x)
+                run.append(acc if x is not None else None)
+            values = run
         snaps = snapshots(values)
 
         # Per-year contribution of one unit of age `age` at year `yi`, and per-unit full cycle at `yi`.
@@ -275,6 +308,7 @@ class CarbonEngine:
             "ledger": ledger,
             "stratum": f"{ctx['country']}/{ctx['zone']}/{ctx['soil']}",
             "basis": "ex post" if (used or overridden) else "ex ante",
+            "flow": flow,
             "monitored": used,
             "overrides": overridden,
             "inventory": {**series["inventory"], "emissions": emissions},
@@ -284,8 +318,9 @@ class CarbonEngine:
             "target": {"inventory": round(tgt * pu_last["inventory"], 1), "intervention": round(tgt * pu_last["intervention"], 1)},
             "perUnit": {l: round(pu_last[l], 3) for l in LEDGERS},
             "band": self.band(code, ctx, programme),
-            "tier": 3 if (used or overridden) else max(f.tier for f in factors.values()),
-            "defaults": sorted(f.id for f in factors.values() if f.monitored_by and f.monitored_by not in used.values()),
+            # The weakest input sets the tier of the result.
+            "tier": 3 if (used or overridden) else min(f.tier for f in factors.values()),
+            "defaults": sorted(f.id for f in factors.values() if f.monitored_by and REPLACES.get(f.id) not in used),
             "reversal": {"released": round(last_em, 1), "share": round(last_em / (last_real + last_em), 3) if last_em else 0.0,
                          "buffer": buffer} if last_em else None,
         }

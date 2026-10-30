@@ -18,13 +18,13 @@ const qualityCols = (): Column<QualityItem>[] => [
 ];
 
 export function Quality() {
-  const { q } = useApp();
-  if (!q) return <div className="card empty" style={{ marginTop: 24 }}>quality.json not found</div>;
+  const { q, lang } = useApp();
+  if (!q) return <div className="card empty" style={{ marginTop: 24 }}>{t("The data-quality report is not available.")}</div>;
   return (
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">{t("Data refreshed")} {new Date(q.generatedAt).toLocaleString()} · {q.source}</div>
+          <div className="eyebrow">{t("Data refreshed")} {new Date(q.generatedAt).toLocaleString(lang === "fr" ? "fr-FR" : "en-GB")} · {q.source}</div>
           <h1>{t("Data quality checks")}</h1>
           <p>{t("Every refresh of the workbook is checked before publishing. Errors stop the publication; warnings and notes are listed here so they can be fixed at the source.")}</p>
         </div>
