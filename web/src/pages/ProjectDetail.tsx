@@ -6,7 +6,7 @@ import { compact, pct } from "../lib/format";
 import { Link } from "../components/Shell";
 import { Meter } from "../components/ui";
 import { IconLeft } from "../components/icons";
-import { CoverageTable, typeShort } from "../components/coverage";
+import { CoverageTable, claimLabel, typeShort } from "../components/coverage";
 
 const isActive = (status: string | null) => (status ?? "").toLowerCase().startsWith("on going");
 
@@ -47,7 +47,7 @@ export function ProjectDetail({ id }: { id: string }) {
               <span className="pill warn" title={p.note}>{t("Classification to confirm")} · {t(p.confidence)}</span>
             )}
             {p.passThrough && <span className="pill warn" title={p.passThrough}>{t("Transfer — not counted")}</span>}
-            {claim && <span className="pill req req-m" title={claim.note}>{t("Claim")}: {t(claim.status)}{claim.confirm ? ` · ${t("To confirm")}` : ""}</span>}
+            {claim && <span className="pill req req-m" title={claim.note}>{t("Claim")}: {claimLabel(claim.status)}{claim.confirm ? ` · ${t("To confirm")}` : ""}</span>}
           </div>
           {claim?.note && <p className="small muted" style={{ marginTop: 6 }}>{claim.note}</p>}
           {p.note && <p className="small muted" style={{ marginTop: 8 }}>{p.note}</p>}

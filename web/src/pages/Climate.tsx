@@ -8,6 +8,7 @@ import { axisBase, esc, tipRow, tipTitle, tooltipBase } from "../lib/echarts";
 import { Chart } from "../components/Chart";
 import { Link } from "../components/Shell";
 import { TierBadge } from "./OutcomePage";
+import { claimLabel, moduleLabel } from "../components/coverage";
 import { ChartCard, CountUp, DataTable, Legend, Meter, type Column } from "../components/ui";
 import type { CarbonFactor } from "../lib/types";
 
@@ -255,7 +256,7 @@ export function Climate() {
           <div className="card-head"><div><h3>{t("Per-unit values")}</h3><div className="sub">{t("tCO₂e per hectare or device over the full cycle, by stratum")}</div></div></div>
           <DataTable rows={perUnit} maxHeight={360} cols={[
             { key: "c", label: t("Indicator"), value: (r) => r.code, render: (r) => <span title={nameOf(ix.indicators.get(r.code)!)}>{r.code}</span>, width: 70 },
-            { key: "a", label: t("Archetype"), value: (r) => t(m.carbon.archetypes[r.code]?.module ?? ""), render: (r) => <span className="xsmall">{t(m.carbon.archetypes[r.code]?.module ?? "")}</span> },
+            { key: "a", label: t("Archetype"), value: (r) => moduleLabel(m.carbon.archetypes[r.code]?.module ?? ""), render: (r) => <span className="xsmall">{moduleLabel(m.carbon.archetypes[r.code]?.module ?? "")}</span> },
             { key: "s", label: t("Stratum"), value: (r) => r.stratum, render: (r) => <span className="xsmall">{r.stratum}</span> },
             { key: "inv", label: t("Inventory"), numeric: true, value: (r) => r.inv, render: (r) => (r.inv ? num(r.inv, 1) : "–") },
             { key: "int", label: t("Intervention"), numeric: true, value: (r) => r.int, render: (r) => (r.int ? num(r.int, 1) : "–") },
@@ -307,7 +308,7 @@ export function Climate() {
               <div className="card" key={c.project}>
                 <div className="xsmall muted">MPTF {c.project}</div>
                 <h3 style={{ fontSize: 15, marginTop: 4 }}>{c.p ? <Link to={{ page: "project", id: String(c.p.id) }}>{c.p.short || c.p.name}</Link> : c.project}</h3>
-                <div style={{ marginTop: 8 }}><span className="pill req req-m">{t(c.status)}</span>{c.confirm && <> <span className="pill warn">{t("To confirm")}</span></>}{c.derived && <> <span className="pill">{t("derived from project type")}</span></>}</div>
+                <div style={{ marginTop: 8 }}><span className="pill req req-m">{claimLabel(c.status)}</span>{c.confirm && <> <span className="pill warn">{t("To confirm")}</span></>}{c.derived && <> <span className="pill">{t("derived from project type")}</span></>}</div>
                 {c.note && <p className="small ink-2" style={{ marginTop: 8 }}>{c.note}</p>}
               </div>
             ))}
@@ -320,7 +321,7 @@ export function Climate() {
         <DataTable rows={Object.entries(m.carbon.archetypes).map(([code, a]) => ({ code, ...a }))} cols={[
           { key: "c", label: t("Indicator"), value: (r) => `${r.code} ${nameOf(ix.indicators.get(r.code)!)}` },
           { key: "l", label: t("Archetype"), value: (r) => r.label },
-          { key: "m", label: "Module", value: (r) => t(r.module) },
+          { key: "m", label: "Module", value: (r) => moduleLabel(r.module) },
           { key: "s", label: "System", value: (r) => r.system ?? (r.ledger ?? "") },
           { key: "r", label: t("Reference"), value: (r) => r.reference ?? "", render: (r) => <span className="xsmall">{r.reference}</span> },
         ] as Column<{ code: string; module: string; label: string; system?: string; reference?: string; ledger?: string }>[]} />
