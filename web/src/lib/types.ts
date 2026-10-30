@@ -79,6 +79,30 @@ export interface Project {
   end: string | null;
   programmes: string[];
   passThrough: string | null; // set for fund-to-fund transfers, left out of totals
+  // Classification from the reference workbook (tabs 12-14)
+  short: string;
+  projectType: string | null; // Enabling · AFOLU / integrated · PES · Private sector · Preparatory · Support
+  pes: boolean;
+  activities: string[];
+  confidence: string | null; // High · Medium · Low
+  note: string;
+  indicators: ExpectedIndicator[];
+}
+
+export type Requirement = "mandatory" | "required" | "optional";
+
+/** A standard indicator a project is expected to report, and why. */
+export interface ExpectedIndicator {
+  code: string;
+  requirement: Requirement;
+  basis: string; // "Type: AFOLU / integrated" or "Activity: Clean cooking"
+}
+
+/** A project activity and the indicators it triggers (tab 12_Activities). */
+export interface Activity {
+  code: string;
+  name: string;
+  indicators: string[];
 }
 
 export interface Co2Series {
@@ -137,6 +161,7 @@ export interface Metrics {
   programmes: Programme[];
   records: DataRecord[];
   projects: Project[];
+  activities: Activity[];
   co2Factors: Co2Factor[];
   headline: { beneficiaries: HeadlineFigure; anticipatedCo2: HeadlineFigure };
 }

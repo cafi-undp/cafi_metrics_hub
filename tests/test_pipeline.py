@@ -170,3 +170,32 @@ def test_pass_through_transfer_is_flagged():
     m = json.loads((ROOT / "web" / "public" / "data" / "metrics.json").read_text())
     flagged = [p["id"] for p in m["projects"] if p["passThrough"]]
     assert flagged == [103702]  # CAFI → FONAREDD transfer, not a project of its own
+
+
+def test_project_reference_tabs_load():
+    from pipeline.reference import load_project_reference, load_reference
+    path = CONFIG / "reference" / "CAFI_Standard_Indicators_MetricsHub.xlsx"
+    ref = load_project_reference(path, set(load_reference(path)["indicators"]))
+    assert len(ref["activities"]) >= 20 and len(ref["projects"]) >= 80
+    assert ref["unknown_indicators"] == []
+    energie = ref["projects"][113546]
+    assert energie["projectType"] == "Private sector" and "Clean cooking" in energie["activities"]
+    links = {l["code"]: l["requirement"] for l in energie["indicators"]}
+    assert links["ENR-01"] == "required" and links["FIN-01"] == "mandatory" and links["ENR-02"] == "optional"
+
+
+def test_projects_carry_expected_indicators_and_coverage_checks():
+    out = ROOT / "web" / "public" / "data"
+    assert build(ROOT / "data" / "ProjectData.xlsx", out, CONFIG, ROOT / "data" / "MPTF_Projects.xlsx") == 0
+    m = json.loads((out / "metrics.json").read_text())
+    checks = {c["id"]: c for c in json.loads((out / "quality.json").read_text())["checks"]}
+    projects = {p["id"]: p for p in m["projects"]}
+    assert m["activities"] and all("indicators" in p for p in m["projects"])
+    energie = projects[113546]
+    assert energie["programmes"] == ["programme-energie"] and energie["pes"] is False
+    assert any(l["code"] == "ENR-01" for l in energie["indicators"])
+    # Programme Energie reports ENR-01, so it is not listed as missing; its mandatory FIN-01 is.
+    missing = {(i["programme"], i["indicator"]) for i in checks["coverage-missing"]["items"]}
+    assert ("Programme Energie", "FIN-01") in missing and ("Programme Energie", "ENR-01") not in missing
+    assert all("optional" not in i["detail"] for i in checks["coverage-missing"]["items"])
+    assert checks["coverage-extra"]["severity"] == "info"

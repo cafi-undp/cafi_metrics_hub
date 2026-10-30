@@ -16,6 +16,21 @@ import type { DataRecord } from "../lib/types";
 
 type MapMetric = "ha" | "programmes" | "co2";
 
+/** The hectare cards only cover the area indicators; most filters outside DRC leave them empty. */
+function NoHectares() {
+  const { filters, setFilters } = useApp();
+  const any = filters.countries.length + filters.partners.length + filters.programmes.length > 0;
+  return (
+    <div className="empty">
+      <div>
+        <div>{any ? t("No hectares reported under the current filters.") : t("No hectares reported yet.")}</div>
+        <div className="xsmall muted" style={{ marginTop: 4 }}>{t("These cards only count the forest and agriculture area indicators; other results are on the Outcomes page.")}</div>
+        {any && <button className="link-btn" onClick={() => setFilters({ countries: [], partners: [], programmes: [] })}>{t("Clear filters")}</button>}
+      </div>
+    </div>
+  );
+}
+
 export function Overview() {
   const { m, ix, filters, setFilters, lang } = useApp();
   const { records, yi, year, years } = useFiltered();
@@ -170,6 +185,11 @@ export function Overview() {
                 }} />
               <MapLegend label={mapLabel} min={mapMetric === "programmes" ? "1" : "0"}
                 max={mapData.length ? mapData.reduce((a, b) => (b.value > a.value ? b : a)).display : "–"} />
+              {!mapData.length && mapMetric === "ha" && records.length > 0 && (
+                <div className="small ink-2" style={{ textAlign: "center", marginTop: 4 }}>
+                  {t("No hectares reported under the current filters.")} <button className="link-btn" onClick={() => setMapMetric("programmes")}>{t("Show programmes instead")}</button>
+                </div>
+              )}
             </>
           )}
         </ChartCard>
@@ -243,7 +263,7 @@ function TopProgrammes({ records, yi }: { records: DataRecord[]; yi: number }) {
               })),
             })} />
         </>
-      ) : <div className="empty">{t("No data for the current filters")}</div>}
+      ) : <NoHectares />}
     </ChartCard>
   );
 }
@@ -277,7 +297,7 @@ function HectaresOverTime({ records }: { records: DataRecord[] }) {
         ] as Column<{ y: number; i: number }>[],
         rows: years.map((y, i) => ({ y, i })),
       }}>
-      {(ref) => (
+      {(ref) => !series.length ? <NoHectares /> : (
         <>
           <LegendRow outcomes={series.map((s) => s.o.id)} />
           <Chart height={320} label="Cumulative hectares by outcome over time" chartRef={ref} deps={[series, filters.year]}
@@ -387,7 +407,7 @@ function HectareTreemap({ records, yi }: { records: DataRecord[]; yi: number }) 
               }),
             }],
           })} />
-      ) : <div className="empty">{t("No data for the current filters")}</div>}
+      ) : <NoHectares />}
     </ChartCard>
   );
 }

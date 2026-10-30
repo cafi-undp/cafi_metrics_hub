@@ -1,13 +1,14 @@
 import { useMemo } from "react";
 import { useApp } from "../lib/state";
 import { nameOf, t } from "../lib/i18n";
-import { co2Aggregate, indicatorAggs, outcomeAchievement, statusOf, valueAt, yearIndex } from "../lib/model";
+import { co2Aggregate, coverage, indicatorAggs, outcomeAchievement, statusOf, valueAt, yearIndex } from "../lib/model";
 import { compact, num, pct, tco2 } from "../lib/format";
 import { outcomeVar } from "../lib/colors";
 import { Link } from "../components/Shell";
 import { DataTable, Meter, MiniMeter, StatusBadge, type Column } from "../components/ui";
 import { IconLeft } from "../components/icons";
 import { IndicatorTile, Trajectory } from "./OutcomePage";
+import { CoverageTable, typeShort } from "../components/coverage";
 import type { DataRecord } from "../lib/types";
 
 export function ProgrammeDetail({ id }: { id: string }) {
@@ -27,6 +28,7 @@ export function ProgrammeDetail({ id }: { id: string }) {
   const span = p.start && p.end ? p.end - p.start + 1 : null;
   const elapsed = span && p.start ? Math.min(span, Math.max(0, filters.year - p.start + 1)) : null;
   const projects = m.projects.filter((x) => p.mptf.includes(x.id));
+  const cov = coverage(projects, recs);
   const mainOutcome = aggs[0]?.indicator.outcome ?? m.outcomes[0].id;
 
   return (
@@ -76,8 +78,8 @@ export function ProgrammeDetail({ id }: { id: string }) {
           <div className="grid g-2">
             {projects.map((pr) => (
               <div className="card" key={pr.id}>
-                <div className="xsmall muted">MPTF {pr.id} · {pr.fund}{pr.type ? ` · ${pr.type}` : ""}</div>
-                <h3 style={{ fontSize: 15, marginTop: 4 }}>{pr.name}</h3>
+                <div className="xsmall muted">MPTF {pr.id} · {pr.fund}{pr.projectType ? ` · ${t(typeShort(pr.projectType))}` : pr.type ? ` · ${pr.type}` : ""}{pr.pes ? " · PES" : ""}</div>
+                <h3 style={{ fontSize: 15, marginTop: 4 }}><Link to={{ page: "project", id: String(pr.id) }}>{pr.short || pr.name}</Link></h3>
                 <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
                   <span className="status"><span style={{ color: pr.status?.toLowerCase().startsWith("on going") ? "var(--good)" : "var(--neutral)", display: "inline-flex" }}>●</span>{pr.status}</span>
                   <span className="pill num">{pr.start?.slice(0, 4)}–{pr.end?.slice(0, 4)}</span>
@@ -90,6 +92,12 @@ export function ProgrammeDetail({ id }: { id: string }) {
                 </div>
                 <Meter value={pr.transferred ? Math.min(1, pr.expenditure / pr.transferred) : null} color="var(--accent)"
                   left={<>{pct(pr.transferred ? pr.expenditure / pr.transferred : null)} {t("of transfers")}</>} />
+                {pr.indicators.length > 0 && (() => {
+                  const c = coverage([pr], recs);
+                  return <Meter value={c.expected ? c.reported / c.expected : null} color="var(--accent)"
+                    left={<>{c.reported} / {c.expected} {t("expected indicators reported")}</>}
+                    right={<Link to={{ page: "project", id: String(pr.id) }}>{t("Project page")} →</Link>} />;
+                })()}
               </div>
             ))}
           </div>
@@ -102,6 +110,22 @@ export function ProgrammeDetail({ id }: { id: string }) {
           {aggs.map((a) => <IndicatorTile key={a.indicator.code} a={a} color={outcomeVar(m, a.indicator.outcome)} lang={lang} yi={yi} />)}
         </div>
       </section>
+
+      {cov.rows.length > 0 && (
+        <section className="section">
+          <div className="section-head">
+            <h2>{t("Expected standard indicators")}</h2>
+            <span className="muted small">{cov.reported} / {cov.expected} {t("expected indicators reported")} · {t("from the project classification")}</span>
+          </div>
+          <CoverageTable rows={cov.rows} yi={yi} />
+          {cov.extra.length > 0 && (
+            <p className="small ink-2" style={{ marginTop: 10 }}>
+              {t("Also reported, but not in this project's expected set:")}{" "}
+              {cov.extra.map((c) => `${c} ${nameOf(ix.indicators.get(c)!)}`).join(" · ")}
+            </p>
+          )}
+        </section>
+      )}
 
       <section className="section">
         <div className="section-head"><h2>{t("Trajectory")}</h2><span className="muted small">{t("Cumulative result against final target")}</span></div>

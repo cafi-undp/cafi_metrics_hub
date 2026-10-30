@@ -2,6 +2,10 @@
 
 Each tab has a title in row 1 and its header a row or two below; the header is
 found by looking for the tab's key column, so extra title or note rows are fine.
+
+Tabs 01-03 are the indicator catalogue (load_reference). Tabs 12-14 classify
+every CAFI / FONAREDD project by type and activities and list the standard
+indicators each project is expected to report (load_project_reference).
 """
 
 from __future__ import annotations
@@ -95,3 +99,55 @@ def load_reference(path: Path) -> dict:
             "sort": int(r["SortOrder"]) if _text(r.get("SortOrder")) else 999,
         }
     return {"categories": categories, "subcategories": subcategories, "indicators": indicators}
+
+
+# Requirement wording in 14_ProjectIndicators → short key used by the dashboard.
+REQUIREMENTS = {"mandatory": "mandatory", "required (activity)": "required", "optional": "optional"}
+
+
+def _split(v, sep=";") -> list[str]:
+    return [x.strip() for x in _text(v).split(sep) if x.strip()]
+
+
+def load_project_reference(path: Path, indicator_codes: set[str]) -> dict:
+    """Project types, activities and the project ↔ indicator bridge (tabs 12-14).
+
+    Older copies of the workbook have no project tabs; they load as empty.
+    """
+    try:
+        acts = _sheet(path, "12_Activities", "ActivityCode")
+        projs = _sheet(path, "13_Projects", "ProjectID")
+        links = _sheet(path, "14_ProjectIndicators", "ProjectID")
+    except ValueError:
+        return {"activities": [], "projects": {}, "unknown_indicators": []}
+
+    activities = [
+        {"code": _text(r["ActivityCode"]), "name": _text(r["Activity"]),
+         "indicators": [c for c in _split(r.get("TriggeredIndicators"), ",") if c in indicator_codes]}
+        for _, r in acts.iterrows()
+    ]
+
+    projects: dict[int, dict] = {}
+    for _, r in projs.iterrows():
+        pid = int(float(r["ProjectID"]))
+        projects[pid] = {
+            "short": _text(r.get("ProjectShort")),
+            "projectType": _text(r.get("ProjectType")),
+            "pes": _text(r.get("PESProject")).casefold() == "yes",
+            "activities": _split(r.get("Activities")),
+            "confidence": _text(r.get("ClassificationConfidence")),
+            "note": _text(r.get("Note")),
+            "indicators": [],
+        }
+
+    unknown = []
+    for _, r in links.iterrows():
+        pid, code = int(float(r["ProjectID"])), _text(r["IndicatorCode"])
+        if code not in indicator_codes:
+            unknown.append({"value": code, "detail": f"MPTF {pid}"})
+            continue
+        if pid not in projects:
+            continue
+        req = REQUIREMENTS.get(_text(r.get("Requirement")).casefold(), "optional")
+        projects[pid]["indicators"].append({"code": code, "requirement": req, "basis": _text(r.get("Basis"))})
+    return {"activities": activities, "projects": projects, "unknown_indicators": unknown}

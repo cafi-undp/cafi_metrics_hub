@@ -435,3 +435,11 @@ details.q .body { padding: 0 16px 16px; }
   .header, .filterbar, .chart-tools, .footer { display: none; }
   .card { box-shadow: none; break-inside: avoid; }
 }
+
+/* Project classification (reference workbook tabs 12-14) */
+.pill.req { font-size: 11px; padding: 1px 7px; }
+.pill.req-m { background: color-mix(in srgb, var(--accent) 22%, transparent); color: var(--ink); font-weight: 600; }
+.pill.req-r { background: color-mix(in srgb, var(--accent) 10%, transparent); color: var(--ink); }
+.pill.req-o { color: var(--muted); }
+.pill.pes { background: color-mix(in srgb, var(--s7, #8a63d2) 20%, transparent); color: var(--ink); font-weight: 600; }
+.empty .link-btn { margin-top: 6px; }

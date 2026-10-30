@@ -66,7 +66,8 @@ The **Publish dashboard** workflow then fetches the workbook every day at 05:17 
   - duplicate rows;
   - a cumulative value going down;
   - rows with no target;
-  - results above twice the target.
+  - results above twice the target;
+  - expected standard indicators (mandatory for the project type, or required by one of its activities) that a linked programme has not reported yet, and reported indicators outside the project's expected set.
 
 All findings appear on the dashboard's **Data quality** page with Excel row numbers.
 
@@ -74,9 +75,9 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 
 | File | Controls |
 |---|---|
-| `config/reference/CAFI_Standard_Indicators_MetricsHub.xlsx` | The standard indicator catalogue: categories, sub-categories, 67 indicators with EN/FR names, tier, unit, aggregation rule, tags. Replace the file to update the site |
+| `config/reference/CAFI_Standard_Indicators_MetricsHub.xlsx` | The standard indicator catalogue (tabs 01–11: categories, sub-categories, 67 indicators with EN/FR names, tier, unit, aggregation rule, tags) and the project classification (tabs 12–15: activities, project type and PES flag per MPTF project, and the indicators each project is expected to report). Replace the file to update the site |
 | `config/indicators.yml` | How old indicator numbers (01–14) in ProjectData.xlsx map to standard codes, sub-indicator overrides, category colours and French names, the hectare headline, countries |
-| `config/programmes.yml` | Which MPTF project id(s) each results programme belongs to (lines marked `check` need confirming) |
+| `config/programmes.yml` | Which MPTF project id(s) each results programme belongs to (lines marked `check` need confirming). The link is what connects a programme's results to its project's budget, type and expected indicators |
 | `config/portfolio.yml` | Fund-to-fund transfers left out of portfolio totals |
 | `config/co2_factors.yml` | tCO₂e per unit per year and horizon for each indicator, with the derivation shown on the site |
 | `config/headline.yml` | Figures not in the workbook (beneficiaries, anticipated portfolio CO₂) |

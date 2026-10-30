@@ -6,6 +6,8 @@ import { axisBase, tipRow, tipTitle, tooltipBase } from "../lib/echarts";
 import { Chart } from "../components/Chart";
 import { Link } from "../components/Shell";
 import { ChartCard, CountUp, DataTable, Legend, Meter, MiniMeter, type Column } from "../components/ui";
+import { typeShort } from "../components/coverage";
+import { coverage, projectRecords } from "../lib/model";
 import type { Project } from "../lib/types";
 
 // The two trust funds take the first and third palette slots (validated as a pair).
@@ -20,7 +22,11 @@ export function Portfolio() {
   const { m, ix, filters } = useApp();
   const [fund, setFund] = useState<"" | "CAFI" | "FONAREDD">("");
   const [state, setState] = useState<"" | "active" | "closed">("");
+  const [type, setType] = useState("");
   const [q, setQ] = useState("");
+  const types = useMemo(() => [...new Set(m.projects.map((p) => typeShort(p.projectType)).filter((x) => x !== "–"))].sort(), [m]);
+  // Expected (mandatory / required) indicators reported, per project, through its linked programme(s).
+  const cov = useMemo(() => new Map(m.projects.map((p) => [p.id, coverage([p], projectRecords(ix, p))])), [m, ix]);
 
   // Country and programme filters apply; year and partner do not (budgets are life-of-project, MPTF partner names differ).
   const projects = useMemo(() => m.projects.filter((p) =>
@@ -28,8 +34,9 @@ export function Portfolio() {
     (!filters.programmes.length || p.programmes.some((x) => filters.programmes.includes(x))) &&
     (!fund || p.fund === fund) &&
     (!state || (state === "active") === isActive(p)) &&
-    (!q.trim() || `${p.name} ${p.id} ${p.orgs.join(" ")}`.toLowerCase().includes(q.trim().toLowerCase())),
-  ), [m, filters.countries, filters.programmes, fund, state, q]);
+    (!type || typeShort(p.projectType) === type) &&
+    (!q.trim() || `${p.name} ${p.short} ${p.id} ${p.orgs.join(" ")}`.toLowerCase().includes(q.trim().toLowerCase())),
+  ), [m, filters.countries, filters.programmes, fund, state, type, q]);
 
   // Fund-to-fund transfers (config/portfolio.yml) are listed but never added to totals.
   const counted = projects.filter((p) => !p.passThrough);
@@ -37,6 +44,8 @@ export function Portfolio() {
   const approved = sum("approved"), transferred = sum("transferred"), spent = sum("expenditure");
   const linked = counted.filter((p) => p.programmes.length).length;
   const transfers = projects.filter((p) => p.passThrough);
+  const expected = counted.filter((p) => p.programmes.length).reduce((s, p) => s + (cov.get(p.id)?.expected ?? 0), 0);
+  const reported = counted.filter((p) => p.programmes.length).reduce((s, p) => s + (cov.get(p.id)?.reported ?? 0), 0);
 
   const byCountry = m.countries.map((c) => ({
     id: c.id, label: nameOf(c),
@@ -72,6 +81,12 @@ export function Portfolio() {
               </button>
             ))}
           </div>
+          {types.length > 0 && (
+            <select className="input" value={type} onChange={(e) => setType(e.target.value)} aria-label={t("Project type")}>
+              <option value="">{t("All types")}</option>
+              {types.map((x) => <option key={x} value={x}>{t(x)}</option>)}
+            </select>
+          )}
         </div>
       </div>
 
@@ -97,6 +112,7 @@ export function Portfolio() {
           <div className="v">{linked}<small>/ {counted.length}</small></div>
           <Meter value={counted.length ? linked / counted.length : null} color="var(--accent)"
             left={<>{t("projects linked to a results programme")}</>} />
+          {expected > 0 && <div className="d">{reported} / {expected} {t("expected indicators reported")}</div>}
         </div>
       </div>
 
@@ -186,18 +202,35 @@ export function Portfolio() {
         <div className="section-head"><h2>{t("Projects")}</h2><span className="muted small">{projects.length} · {t("Year and partner filters do not apply to budgets.")}</span></div>
         <DataTable rows={projects} initialSort={{ key: "a", dir: -1 }} cols={[
           { key: "id", label: "MPTF", numeric: true, value: (p) => p.id, width: 70 },
-          { key: "n", label: t("Project"), value: (p) => p.name, render: (p) => (
-            <span title={p.orgs.join(", ")}>{p.name}{p.passThrough && <> <span className="pill warn" title={p.passThrough}>{t("Transfer — not counted")}</span></>}</span>
+          { key: "n", label: t("Project"), value: (p) => p.short || p.name, render: (p) => (
+            <span title={`${p.name} · ${p.orgs.join(", ")}`}>
+              <Link to={{ page: "project", id: String(p.id) }}><b>{p.short || p.name}</b></Link>
+              {p.passThrough && <> <span className="pill warn" title={p.passThrough}>{t("Transfer — not counted")}</span></>}
+            </span>
           ) },
           { key: "f", label: t("Fund"), value: (p) => p.fund },
           { key: "c", label: t("Country"), value: (p) => nameOf(ix.countries.get(p.country) ?? { name: p.countryLabel }) },
-          { key: "ty", label: t("Type"), value: (p) => p.type ?? "" },
+          { key: "ty", label: t("Type"), value: (p) => typeShort(p.projectType), render: (p) => (
+            <span title={p.projectType ?? p.type ?? ""}>{t(typeShort(p.projectType))}{p.pes && <> <span className="pill pes">PES</span></>}</span>
+          ) },
           { key: "s", label: t("Status"), value: (p) => p.status ?? "",
             render: (p) => <span className="status"><span style={{ color: isActive(p) ? "var(--good)" : "var(--neutral)", display: "inline-flex" }}>●</span>{p.status}</span> },
           { key: "a", label: t("Approved budget"), numeric: true, value: (p) => p.approved, render: (p) => usd(p.approved) },
           { key: "d", label: t("Spent / transferred"), numeric: true, value: (p) => (p.transferred ? p.expenditure / p.transferred : null),
             render: (p) => <MiniMeter value={p.transferred ? Math.min(1, p.expenditure / p.transferred) : null} /> },
           { key: "p", label: t("Period"), value: (p) => p.start ?? "", render: (p) => `${p.start?.slice(0, 4) ?? "?"}–${p.end?.slice(0, 4) ?? "?"}` },
+          { key: "x", label: t("Indicators"), numeric: true,
+            value: (p) => (p.programmes.length && cov.get(p.id)?.expected ? cov.get(p.id)!.reported / cov.get(p.id)!.expected : null),
+            render: (p) => {
+              const c = cov.get(p.id);
+              if (!c || !c.expected || !p.programmes.length) return <span className="muted" title={!c?.expected ? t("No expected indicators") : t("Not linked to a results programme")}>–</span>;
+              return <span className="mini-meter" title={`${c.reported} / ${c.expected} ${t("expected indicators reported")}`}>
+                <span className="track" style={{ background: "color-mix(in srgb, var(--accent) 16%, var(--surface-sunk))" }}>
+                  <span className="fill" style={{ width: `${(c.reported / c.expected) * 100}%`, background: "var(--accent)" }} />
+                </span>
+                <span>{c.reported}/{c.expected}</span>
+              </span>;
+            } },
           { key: "r", label: t("Results"), value: (p) => p.programmes.length,
             render: (p) => p.programmes.length
               ? p.programmes.map((id) => <Link key={id} to={{ page: "programme", id }}>{ix.programmes.get(id)?.name}</Link>)

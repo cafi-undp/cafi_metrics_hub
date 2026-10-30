@@ -2,7 +2,7 @@ import { useMemo, useState } from "react";
 import { useApp } from "../lib/state";
 import { useFiltered } from "../lib/hooks";
 import { nameOf, t } from "../lib/i18n";
-import { byKey, indicatorAggs, outcomeAchievement, statusOf, valueAt, type IndicatorAgg } from "../lib/model";
+import { byKey, indicatorAggs, indicatorCoverage, outcomeAchievement, statusOf, valueAt, type IndicatorAgg } from "../lib/model";
 import { compact, num, pct, signed, unitLabel, withUnit } from "../lib/format";
 import { outcomeHex, outcomeVar } from "../lib/colors";
 import { axisBase, esc, tipRow, tipTitle, tooltipBase } from "../lib/echarts";
@@ -111,8 +111,10 @@ export function OutcomePage({ id }: { id: string }) {
 
 /** The standard indicators of one or more categories, with tier, unit and whether results are reported. */
 export function CatalogueTable({ rows, showCategory = false }: { rows: Indicator[]; showCategory?: boolean }) {
-  const { m, navigate } = useApp();
+  const { m, ix, navigate } = useApp();
   const sub = new Map(m.subcategories.map((s) => [s.code, s.name]));
+  const cov = useMemo(() => indicatorCoverage(ix), [ix]);
+  const hasProjects = cov.size > 0;
   return (
     <DataTable rows={rows} maxHeight={560}
       onRowClick={(i) => { if (i.reported) navigate({ page: "outcome", id: i.outcome }); }}
@@ -132,6 +134,16 @@ export function CatalogueTable({ rows, showCategory = false }: { rows: Indicator
         { key: "t", label: t("Tier"), value: (i) => i.tier, render: (i) => <TierBadge tier={i.tier} /> },
         { key: "u", label: t("Unit"), value: (i) => i.unitLabel },
         { key: "a", label: t("Aggregation"), value: (i) => i.aggregation },
+        ...(hasProjects ? [{
+          key: "p", label: t("Projects"), numeric: true, value: (i: Indicator) => cov.get(i.code)?.expected ?? 0,
+          render: (i: Indicator) => {
+            const c = cov.get(i.code);
+            if (!c) return <span className="muted">–</span>;
+            return <span title={`${c.expected} ${t("projects expected to report it")} · ${c.reported} ${t("reporting")} · ${c.optional} ${t("optional")}`}>
+              {c.reported}<span className="muted"> / {c.expected}</span>
+            </span>;
+          },
+        }] : []),
         { key: "r", label: t("Reported"), value: (i) => (i.reported ? 1 : 0),
           render: (i) => (i.reported ? <span className="status"><span style={{ color: "var(--good)", display: "inline-flex" }}>●</span>{t("Yes")}</span> : <span className="muted">–</span>) },
       ] as Column<Indicator>[]} />

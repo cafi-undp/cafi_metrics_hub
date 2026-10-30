@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { aggregate, co2Aggregate, outcomeAchievement, statusOf, valueAt, type IndicatorAgg } from "./model";
-import type { DataRecord } from "./types";
+import { aggregate, co2Aggregate, coverage, expectedIndicators, outcomeAchievement, statusOf, valueAt, type IndicatorAgg } from "./model";
+import type { DataRecord, Project } from "./types";
 
 const rec = (values: (number | null)[], target: number | null, extra: Partial<DataRecord> = {}): DataRecord => ({
   id: 0, row: 2, programme: "p", partner: "x", indicator: "AGR-01", source: "", type: null, label: "", target, values, co2: null, ...extra,
@@ -63,5 +63,33 @@ describe("co2Aggregate", () => {
     const co2 = { absorbed: [10, 20], avoided: [5, 10], realised: [1, 3], targetAbsorbed: 100, targetAvoided: 50 };
     const a = co2Aggregate([rec([1, 2], 10, { co2 }), rec([1], 1)], 1);
     expect(a).toEqual({ absorbed: 20, avoided: 10, committed: 30, realised: 3, target: 150 });
+  });
+});
+
+const project = (indicators: Project["indicators"], programmes = ["p"]): Project => ({
+  id: 1, name: "P", fund: "CAFI", type: null, status: null, country: "DRC", countryLabel: "", orgs: [], approved: 0, transferred: 0,
+  refunds: 0, expenditure: 0, start: null, end: null, programmes, passThrough: null, short: "P", projectType: "Enabling", pes: false,
+  activities: [], confidence: "High", note: "", indicators,
+});
+
+describe("coverage", () => {
+  it("keeps the strongest requirement when several projects expect the same indicator", () => {
+    const a = project([{ code: "GOV-01", requirement: "optional", basis: "Activity: Capacity building" }]);
+    const b = project([{ code: "GOV-01", requirement: "mandatory", basis: "Type: Enabling" }]);
+    expect(expectedIndicators([a, b]).get("GOV-01")?.requirement).toBe("mandatory");
+  });
+
+  it("counts reported mandatory/required indicators and lists unexpected ones", () => {
+    const p = project([
+      { code: "GOV-01", requirement: "mandatory", basis: "Type: Enabling" },
+      { code: "GOV-02", requirement: "required", basis: "Activity: Policy & regulatory support" },
+      { code: "GOV-05", requirement: "optional", basis: "Activity: Policy & regulatory support" },
+    ]);
+    const c = coverage([p], [rec([1], 1, { indicator: "GOV-01" }), rec([1], 1, { indicator: "GOV-05" }), rec([1], 1, { indicator: "FOR-01" })]);
+    expect(c.expected).toBe(2);
+    expect(c.reported).toBe(1);
+    expect(c.optionalReported).toBe(1);
+    expect(c.extra).toEqual(["FOR-01"]);
+    expect(c.rows.map((r) => r.code)).toEqual(["GOV-01", "GOV-02", "GOV-05"]); // mandatory, required, optional
   });
 });
