@@ -203,8 +203,7 @@ factors:
     unit: persons
     dist: {type: normal, rel95: 0.1}
     tier: 2
-    source: "DRC DHS 2013-14; update with EDS-RDC III 2023-24"
-    confirm: true
+    source: "DRC EDS-RDC III 2023-24 summary report (5.3 persons per household), unchanged from DHS 2013-14"
   fuel_savings:
     value: 0.35
     unit: fraction

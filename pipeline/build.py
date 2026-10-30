@@ -427,9 +427,9 @@ def coverage_checks(df: pd.DataFrame, programmes: list[dict], projects: list[dic
 
 
 def carbon_checks(records: list[dict], df: pd.DataFrame, years: list[int], config: Config, rep: QualityReport) -> None:
-    """Data-quality notes from the carbon engine: reversals and defaults still in use."""
+    """Data-quality notes from the carbon engine: reversals, monitored data in use, defaults still in use."""
     from pipeline.carbon.cohorts import reversals
-    rev, used = [], {}
+    rev, over_buffer, used, monitored = [], [], {}, {}
     for rec, (_, row) in zip(records, df.iterrows()):
         c = rec["co2"]
         if not c:
@@ -438,13 +438,32 @@ def carbon_checks(records: list[dict], df: pd.DataFrame, years: list[int], confi
             rev.append({"row": rec["row"], "programme": row["programme"], "indicator": row["indicator"],
                         "detail": f"{area:,.0f} units of the {years[y_c]} cohort retired in {years[y_ret]}; "
                                   f"the stock released is booked as an emission"})
+        r = c.get("reversal")
+        if r and r["share"] > r["buffer"] > 0:
+            over_buffer.append({"row": rec["row"], "programme": row["programme"], "indicator": row["indicator"],
+                                "detail": f"{r['share']:.0%} of the stock released, above the {r['buffer']:.0%} non-permanence buffer"})
         for fid in c["defaults"]:
             used.setdefault((row["code"], fid), set()).add(row["programme"])
+        for param, ind in c["monitored"].items():
+            monitored.setdefault((row["programme"], f"{param} ← {ind}"), 0)
+            monitored[(row["programme"], f"{param} ← {ind}")] += 1
+        for fid in c.get("overrides", []):
+            monitored.setdefault((row["programme"], f"{fid} ← overrides.yml"), 0)
+            monitored[(row["programme"], f"{fid} ← overrides.yml")] += 1
     if rev:
         rep.info("carbon-reversal", "Carbon: reported area decreased (reversal)",
                  "A cumulative result went down. The carbon engine retires the oldest cohorts and books the "
                  "released stock as an emission in that year. Check whether the decrease is a data-entry error.",
                  rev)
+    if over_buffer:
+        rep.warning("carbon-reversal-buffer", "Carbon: reversal larger than the non-permanence buffer",
+                    "The stock released by the decrease exceeds the share set aside as buffer, so the net benefit "
+                    "of earlier years is overstated until the area recovers.", over_buffer)
+    if monitored:
+        rep.info("carbon-monitored", "Carbon: monitored data replacing defaults (ex post)",
+                 "These programmes report ENR-02, ENR-03 or CLM-02, or have measured values in config/carbon/overrides.yml; "
+                 "their carbon figures use them instead of the defaults.",
+                 [{"programme": p, "value": what, "detail": f"{n} row(s)"} for (p, what), n in sorted(monitored.items())])
     if used:
         lib = config.carbon.library
         rep.info("carbon-defaults", "Carbon: defaults waiting for monitoring data",
@@ -481,6 +500,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
     sources = df.groupby("code")["legacy"].nunique()
     prog_country = {p["name"]: p["country"] for p in programmes}
     engine = CarbonEngine(config.carbon, years)
+    engine.observe(df)
     records = []
     for i in range(len(df)):
         row = df.iloc[i]
@@ -537,7 +557,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
         "records": records,
         "projects": projects,
         "activities": config.activities,
-        "carbon": engine.describe(programmes),
+        "carbon": engine.describe(programmes, projects),
         "headline": {
             "beneficiaries": config.headline["beneficiaries"],
             "anticipatedCo2": config.headline["anticipated_co2"],

@@ -8,6 +8,7 @@ import { axisBase, esc, tipRow, tipTitle, tooltipBase } from "../lib/echarts";
 import { Chart } from "../components/Chart";
 import { Link } from "../components/Shell";
 import { TierBadge } from "./OutcomePage";
+import { claimLabel, moduleLabel } from "../components/coverage";
 import { ChartCard, CountUp, DataTable, Legend, Meter, type Column } from "../components/ui";
 import type { CarbonFactor } from "../lib/types";
 
@@ -47,11 +48,11 @@ export function Climate() {
 
   // Per-unit values actually used, one row per indicator × stratum present in the data.
   const perUnit = useMemo(() => {
-    const seen = new Map<string, { code: string; stratum: string; inv: number; int: number; pot: number; tier: number; n: number }>();
+    const seen = new Map<string, { code: string; stratum: string; inv: number; int: number; pot: number; tier: number; n: number; basis: string }>();
     for (const r of co2Recs) {
       const c = r.co2!;
-      const k = `${r.indicator}|${c.stratum}`;
-      const e = seen.get(k) ?? { code: r.indicator, stratum: c.stratum, inv: c.perUnit.inventory, int: c.perUnit.intervention, pot: c.perUnit.potential + c.perUnit.indicative, tier: c.tier, n: 0 };
+      const k = `${r.indicator}|${c.stratum}|${c.basis}`;
+      const e = seen.get(k) ?? { code: r.indicator, stratum: c.stratum, inv: c.perUnit.inventory, int: c.perUnit.intervention, pot: c.perUnit.potential + c.perUnit.indicative, tier: c.tier, n: 0, basis: c.basis };
       e.n++;
       seen.set(k, e);
     }
@@ -59,6 +60,8 @@ export function Climate() {
   }, [co2Recs]);
 
   const claims = m.carbon.claims.map((c) => ({ ...c, p: m.projects.find((p) => p.id === c.project) }));
+  const exPost = co2Recs.filter((r) => r.co2!.basis === "ex post").length;
+  const monitoring = Object.entries(m.carbon.monitoring).map(([name, v]) => ({ name, p: m.programmes.find((p) => p.name === name), ...v }));
 
   return (
     <>
@@ -253,15 +256,30 @@ export function Climate() {
           <div className="card-head"><div><h3>{t("Per-unit values")}</h3><div className="sub">{t("tCO₂e per hectare or device over the full cycle, by stratum")}</div></div></div>
           <DataTable rows={perUnit} maxHeight={360} cols={[
             { key: "c", label: t("Indicator"), value: (r) => r.code, render: (r) => <span title={nameOf(ix.indicators.get(r.code)!)}>{r.code}</span>, width: 70 },
-            { key: "a", label: t("Archetype"), value: (r) => t(m.carbon.archetypes[r.code]?.module ?? ""), render: (r) => <span className="xsmall">{t(m.carbon.archetypes[r.code]?.module ?? "")}</span> },
+            { key: "a", label: t("Archetype"), value: (r) => moduleLabel(m.carbon.archetypes[r.code]?.module ?? ""), render: (r) => <span className="xsmall">{moduleLabel(m.carbon.archetypes[r.code]?.module ?? "")}</span> },
             { key: "s", label: t("Stratum"), value: (r) => r.stratum, render: (r) => <span className="xsmall">{r.stratum}</span> },
             { key: "inv", label: t("Inventory"), numeric: true, value: (r) => r.inv, render: (r) => (r.inv ? num(r.inv, 1) : "–") },
             { key: "int", label: t("Intervention"), numeric: true, value: (r) => r.int, render: (r) => (r.int ? num(r.int, 1) : "–") },
             { key: "pot", label: t("Other"), numeric: true, value: (r) => r.pot, render: (r) => (r.pot ? <span title={`${t("Indicative: soil carbon")} / ${t("Potential: displaced fuelwood")}`}>{num(r.pot, 1)}</span> : "–") },
             { key: "t", label: t("Tier"), numeric: true, value: (r) => r.tier, render: (r) => <TierBadge tier={`T${r.tier}`} /> },
+            { key: "b", label: t("Basis"), value: (r) => r.basis, render: (r) => <span className={`pill ${r.basis === "ex post" ? "req req-m" : ""}`}>{t(r.basis)}</span> },
             { key: "n", label: t("rows"), numeric: true, value: (r) => r.n },
           ] as Column<(typeof perUnit)[number]>[]} />
         </section>
+      </section>
+
+      <section className="section">
+        <div className="section-head">
+          <div><h2>{t("Monitoring status")}</h2><p className="muted small">{t("Tier escalation: ENR-02 → usage, ENR-03 → fuel savings, CLM-02 → effectiveness of forest protection; measured values in config/carbon/overrides.yml")}</p></div>
+          <span className="muted small">{exPost} / {co2Recs.length} {t("rows")} {t("ex post")}</span>
+        </div>
+        {monitoring.length ? (
+          <DataTable rows={monitoring} cols={[
+            { key: "p", label: t("Programme"), value: (r) => r.name, render: (r) => (r.p ? <Link to={{ page: "programme", id: r.p.id }}>{r.name}</Link> : r.name) },
+            { key: "i", label: t("Monitored"), value: (r) => Object.entries(r.indicators).map(([k, v]) => `${v} → ${k}`).join(", ") || "–" },
+            { key: "o", label: t("Overrides"), value: (r) => r.overrides.join(", ") || "–" },
+          ] as Column<(typeof monitoring)[number]>[]} />
+        ) : <div className="card small muted">{t("No programme reports ENR-02, ENR-03 or CLM-02 yet, and config/carbon/overrides.yml is empty: every carbon figure is an ex-ante default.")}</div>}
       </section>
 
       <section className="section">
@@ -290,7 +308,7 @@ export function Climate() {
               <div className="card" key={c.project}>
                 <div className="xsmall muted">MPTF {c.project}</div>
                 <h3 style={{ fontSize: 15, marginTop: 4 }}>{c.p ? <Link to={{ page: "project", id: String(c.p.id) }}>{c.p.short || c.p.name}</Link> : c.project}</h3>
-                <div style={{ marginTop: 8 }}><span className="pill req req-m">{t(c.status)}</span>{c.confirm && <> <span className="pill warn">{t("To confirm")}</span></>}</div>
+                <div style={{ marginTop: 8 }}><span className="pill req req-m">{claimLabel(c.status)}</span>{c.confirm && <> <span className="pill warn">{t("To confirm")}</span></>}{c.derived && <> <span className="pill">{t("derived from project type")}</span></>}</div>
                 {c.note && <p className="small ink-2" style={{ marginTop: 8 }}>{c.note}</p>}
               </div>
             ))}
@@ -303,7 +321,7 @@ export function Climate() {
         <DataTable rows={Object.entries(m.carbon.archetypes).map(([code, a]) => ({ code, ...a }))} cols={[
           { key: "c", label: t("Indicator"), value: (r) => `${r.code} ${nameOf(ix.indicators.get(r.code)!)}` },
           { key: "l", label: t("Archetype"), value: (r) => r.label },
-          { key: "m", label: "Module", value: (r) => t(r.module) },
+          { key: "m", label: "Module", value: (r) => moduleLabel(r.module) },
           { key: "s", label: "System", value: (r) => r.system ?? (r.ledger ?? "") },
           { key: "r", label: t("Reference"), value: (r) => r.reference ?? "", render: (r) => <span className="xsmall">{r.reference}</span> },
         ] as Column<{ code: string; module: string; label: string; system?: string; reference?: string; ledger?: string }>[]} />

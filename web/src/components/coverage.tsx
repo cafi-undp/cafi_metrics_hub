@@ -19,6 +19,24 @@ export function RequirementBadge({ r, basis }: { r: Requirement; basis?: string 
   return <span className={`pill req ${REQ_META[r].cls}`} title={basis}>{t(REQ_META[r].label)}</span>;
 }
 
+/** English labels for the carbon claims register statuses and engine modules (translated through t()). */
+export const CLAIM_LABEL: Record<string, string> = {
+  cafi_contribution: "CAFI contribution",
+  national_programme: "National programme (FREL / ERPA)",
+  corporate_inventory: "Corporate inventory (Scope 3)",
+  inset_unit: "Inset unit",
+  credit: "Carbon credit",
+  article6: "Article 6 (corresponding adjustment)",
+};
+export const MODULE_LABEL: Record<string, string> = {
+  arr: "ARR (planting / regeneration)",
+  redd: "REDD (avoided deforestation)",
+  alm: "ALM (soil carbon)",
+  cooking: "Clean cooking",
+};
+export const claimLabel = (s: string) => t(CLAIM_LABEL[s] ?? s);
+export const moduleLabel = (s: string) => t(MODULE_LABEL[s] ?? s);
+
 /** Short label for the workbook's project types ("Preparatory / feasibility grant" → "Preparatory"). */
 export function typeShort(type: string | null): string {
   if (!type) return "–";
