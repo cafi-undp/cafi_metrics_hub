@@ -1,0 +1,649 @@
+<title>CAFI Metrics Hub Redesign</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Instrument+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Newsreader:ital,opsz,wght@0,6..72,400;0,6..72,500;1,6..72,400&family=IBM+Plex+Mono:wght@400;500&display=swap">
+<style>
+/* Layout concept: a results publication, not a dashboard. One content column, hairline rules,
+   a persistent context bar; figures are the only boxed objects. Container queries make the
+   same markup lay out for a phone frame inside the page. */
+:root{
+  --bg:#f1f4f2; --surface:#ffffff; --sunk:#e6ebe8; --ink:#0f1f1b; --ink-2:#3c4b46; --ink-3:#5f6f6a; --hair:#d8dfdb; --hair-2:#c3cdc8;
+  --brand:#0a5a63; --brand-2:#0b7f88; --accent:#0c9a8a; --accent-wash:rgba(12,154,138,.12);
+  --good:#1e7a3c; --warn:#a86a12; --bad:#b1372f;
+  --c-gov:#e0622a; --c-for:#189a6e; --c-lut:#2e74c9; --c-agr:#2b8a2b; --c-enr:#cf9200; --c-ppl:#cf5587; --c-fin:#d13f3b; --c-clm:#6755cf; --c-inc:#7b8884;
+  --band:rgba(10,90,99,.18); --shadow:0 1px 0 rgba(15,31,27,.04);
+  --display:"Instrument Sans",system-ui,-apple-system,"Segoe UI",sans-serif; --serif:"Newsreader",Georgia,"Times New Roman",serif; --mono:"IBM Plex Mono",ui-monospace,Menlo,monospace;
+}
+@media (prefers-color-scheme: dark){ :root:not([data-theme="light"]){
+  --bg:#0f1715; --surface:#16211e; --sunk:#1e2b27; --ink:#e9efec; --ink-2:#b8c4bf; --ink-3:#8f9d98; --hair:#263430; --hair-2:#34453f;
+  --brand:#5fc9c0; --brand-2:#3fb3ab; --accent:#4fd1c2; --accent-wash:rgba(79,209,194,.14);
+  --good:#4fc07a; --warn:#e0a24a; --bad:#ef7d75;
+  --c-gov:#ef7a46; --c-for:#36c08f; --c-lut:#5c97e6; --c-agr:#55b455; --c-enr:#e8b03a; --c-ppl:#ea7ea8; --c-fin:#ee6b67; --c-clm:#9a8cf0; --c-inc:#8d9a96;
+  --band:rgba(95,201,192,.22); --shadow:none; color-scheme:dark } }
+:root[data-theme="dark"]{
+  --bg:#0f1715; --surface:#16211e; --sunk:#1e2b27; --ink:#e9efec; --ink-2:#b8c4bf; --ink-3:#8f9d98; --hair:#263430; --hair-2:#34453f;
+  --brand:#5fc9c0; --brand-2:#3fb3ab; --accent:#4fd1c2; --accent-wash:rgba(79,209,194,.14);
+  --good:#4fc07a; --warn:#e0a24a; --bad:#ef7d75;
+  --c-gov:#ef7a46; --c-for:#36c08f; --c-lut:#5c97e6; --c-agr:#55b455; --c-enr:#e8b03a; --c-ppl:#ea7ea8; --c-fin:#ee6b67; --c-clm:#9a8cf0; --c-inc:#8d9a96;
+  --band:rgba(95,201,192,.22); --shadow:none; color-scheme:dark }
+
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:15px/1.45 var(--display);-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+button:focus-visible,a:focus-visible,input:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.num{font-variant-numeric:tabular-nums lining-nums}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0)}
+@media (prefers-reduced-motion: reduce){*{animation:none!important;transition:none!important}}
+
+/* ── proto chrome (the strip above the prototype) ── */
+.proto{padding-block:14px 10px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;gap:12px;align-items:center;flex-wrap:wrap;border-bottom:1px dashed var(--hair-2);color:var(--ink-2);font-size:13px}
+.proto b{color:var(--ink);font-weight:600}
+.proto .seg{margin-left:auto}
+.seg{display:inline-flex;gap:2px;padding:3px;border-radius:9px;background:var(--sunk);flex-wrap:wrap}
+.seg button{padding:5px 11px;border-radius:7px;color:var(--ink-2);font-size:13px;font-weight:500}
+.seg button[aria-pressed="true"]{background:var(--surface);color:var(--ink);box-shadow:var(--shadow);font-weight:600}
+.stage{padding-block:18px 40px;padding-left:max(16px,env(safe-area-inset-left,0px));padding-right:max(16px,env(safe-area-inset-right,0px));display:flex;justify-content:center}
+.device{width:100%;container-type:inline-size;background:var(--bg);border:1px solid var(--hair);border-radius:14px;overflow:hidden;box-shadow:0 10px 40px rgba(15,31,27,.08)}
+.device.phone{width:min(100%,392px)}
+
+/* ── app shell ── */
+.top{display:flex;align-items:center;gap:22px;height:56px;padding:0 24px;border-bottom:1px solid var(--hair);background:var(--surface)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;letter-spacing:-.01em;white-space:nowrap}
+.brand .mark{width:26px;height:26px;border-radius:7px;background:linear-gradient(135deg,var(--brand),var(--accent));flex:none}
+.brand small{font-weight:500;color:var(--ink-3)}
+.nav{display:flex;gap:0;align-items:center;min-width:0;overflow:hidden;flex:1 1 auto}
+.nav .grp{color:var(--ink-3);font-size:11px;letter-spacing:.08em;text-transform:uppercase;padding:0 4px 0 12px;white-space:nowrap}
+.nav a{padding:7px 9px;border-radius:8px;color:var(--ink-2);font-weight:500;font-size:14px;white-space:nowrap}
+.nav a[aria-current="page"]{background:var(--ink);color:var(--bg)}
+.util{margin-left:auto;display:flex;gap:8px;align-items:center}
+.search{display:flex;align-items:center;gap:8px;border:1px solid var(--hair-2);background:var(--bg);border-radius:8px;padding:6px 10px;color:var(--ink-3);font-size:13px;width:200px;flex:none}
+.search kbd{margin-left:auto;font:500 11px var(--mono);color:var(--ink-2);background:var(--sunk);border-radius:5px;padding:1px 6px}
+.ibtn{border:1px solid var(--hair-2);background:var(--surface);border-radius:8px;height:32px;min-width:32px;padding:0 10px;font-size:13px;font-weight:500;color:var(--ink-2);display:inline-flex;align-items:center;justify-content:center;gap:6px}
+.ibtn.primary{background:var(--ink);color:var(--bg);border-color:var(--ink)}
+.ctx{display:flex;align-items:center;gap:12px;padding:9px 24px;border-bottom:1px solid var(--hair);background:var(--surface);flex-wrap:wrap}
+.scrub{display:flex;align-items:center;gap:2px;border:1px solid var(--hair);border-radius:9px;padding:3px;background:var(--bg)}
+.scrub .lbl{font-size:12px;color:var(--ink-3);padding:0 8px}
+.scrub button{padding:5px 10px;border-radius:7px;color:var(--ink-2);font-size:13px;font-weight:500;position:relative}
+.scrub button[aria-pressed="true"]{background:var(--ink);color:var(--bg)}
+.scrub button.part::after{content:"";position:absolute;top:4px;right:4px;width:5px;height:5px;border-radius:50%;background:var(--warn)}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--hair-2);border-radius:9px;padding:6px 10px;font-size:13px;background:var(--surface);color:var(--ink-2)}
+.chip .k{color:var(--ink-3)}
+.basis{margin-left:auto}
+.wrap{max-width:1240px;margin:0 auto;padding:0 24px}
+
+/* ── typography ── */
+.eyebrow{font:500 12px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+.eyebrow i{width:6px;height:6px;border-radius:50%;background:var(--accent);display:inline-block}
+h1.title{font:500 clamp(28px,3.4cqw,44px)/1.1 var(--serif);letter-spacing:-.015em;margin:10px 0;max-width:30ch;text-wrap:balance}
+.lede{font:400 17px/1.5 var(--serif);color:var(--ink-2);max-width:66ch;margin:0}
+.meta{display:flex;gap:18px;margin-top:14px;font-size:13px;color:var(--ink-3);flex-wrap:wrap}
+.meta b{color:var(--ink-2);font-weight:500}
+.mast{padding:36px 0 22px;border-bottom:1px solid var(--hair)}
+section.sec{padding:30px 0 6px}
+.sec-h{display:flex;align-items:flex-end;justify-content:space-between;gap:16px;margin-bottom:14px;flex-wrap:wrap}
+.sec-h h2{font:500 24px/1.15 var(--serif);margin:0;letter-spacing:-.01em}
+.sec-h p{margin:4px 0 0;color:var(--ink-3);font-size:14px}
+.act{font-size:13px;color:var(--brand);font-weight:600;white-space:nowrap}
+
+/* ── key figures ── */
+.kpis{display:grid;grid-template-columns:repeat(5,minmax(0,1fr));border-bottom:1px solid var(--hair)}
+.kpi{padding:20px 20px 18px 0;border-right:1px solid var(--hair);margin-right:20px;min-width:0}
+.kpi:last-child{border-right:0;margin-right:0}
+.kpi .l{font-size:13px;color:var(--ink-2);display:flex;justify-content:space-between;align-items:center;gap:8px}
+.dq{width:8px;height:8px;border-radius:50%;background:var(--warn);display:inline-block;flex:none}
+.kpi .v{font:600 34px/1 var(--display);letter-spacing:-.03em;margin-top:10px;display:flex;align-items:baseline;gap:6px;flex-wrap:wrap}
+.kpi .v small{font:500 13px var(--display);color:var(--ink-3);letter-spacing:0}
+.kpi .d{margin-top:8px;font-size:12.5px;color:var(--ink-3)}
+.up{color:var(--good);font-weight:600}
+.band{height:6px;border-radius:3px;background:var(--sunk);position:relative;margin-top:12px}
+.band .rng{position:absolute;top:0;bottom:0;background:var(--band);border-radius:3px}
+.band .pt{position:absolute;top:-3px;width:12px;height:12px;border-radius:50%;background:var(--brand);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--brand);transform:translateX(-50%)}
+svg.spark{display:block;height:28px;width:100%;margin-top:10px;overflow:visible}
+
+/* ── figure ── */
+.grid{display:grid;gap:20px}
+.g-12{grid-template-columns:repeat(12,minmax(0,1fr))}
+.span-7{grid-column:span 7}.span-5{grid-column:span 5}.span-6{grid-column:span 6}.span-8{grid-column:span 8}.span-4{grid-column:span 4}.span-12{grid-column:span 12}
+.fig{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:16px 18px 12px;min-width:0}
+.fig-h{display:flex;justify-content:space-between;gap:12px;align-items:flex-start;flex-wrap:wrap}
+.fig-h h3{margin:0;font:600 15px/1.3 var(--display)}
+.fig-h .sub{color:var(--ink-3);font-size:13px;margin-top:2px}
+.tools{display:flex;gap:4px}
+.tools button{width:28px;height:28px;border-radius:7px;border:1px solid var(--hair);color:var(--ink-3);font-size:12px;display:grid;place-items:center}
+.fig-f{display:flex;justify-content:space-between;gap:12px;color:var(--ink-3);font-size:12px;border-top:1px solid var(--hair);margin-top:14px;padding-top:10px;flex-wrap:wrap}
+.fig-f a{color:var(--brand);font-weight:600}
+
+/* ── insights ── */
+.insights{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:20px}
+.insight{padding:16px 0;border-top:2px solid var(--ink)}
+.insight .k{font:600 12px var(--display);letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3)}
+.insight p{font:400 17px/1.45 var(--serif);margin:8px 0 0}
+.insight p a{font-weight:500;color:var(--brand);border-bottom:1px solid var(--band)}
+
+/* ── bullet table ── */
+.tbl-wrap{overflow-x:auto}
+table.bul{width:100%;border-collapse:collapse;font-size:14px;min-width:620px}
+table.bul th{text-align:left;font:600 12px var(--display);letter-spacing:.06em;text-transform:uppercase;color:var(--ink-3);padding:0 10px 10px 0;border-bottom:1px solid var(--hair)}
+table.bul td{padding:11px 10px 11px 0;border-bottom:1px solid var(--hair);vertical-align:middle}
+table.bul td.n{text-align:right;font-weight:600}
+table.bul tr:hover td{background:var(--accent-wash)}
+.cat{display:flex;align-items:center;gap:10px;font-weight:500}
+.cat i{width:10px;height:10px;border-radius:3px;display:inline-block;flex:none}
+.bullet{position:relative;height:14px;background:var(--sunk);border-radius:3px;min-width:160px}
+.bullet .q{position:absolute;top:0;bottom:0;left:0;background:var(--hair-2);border-radius:3px;opacity:.7}
+.bullet .m{position:absolute;top:3px;bottom:3px;left:0;border-radius:2px}
+.bullet .t{position:absolute;top:-3px;width:2px;height:20px;background:var(--ink)}
+.badge{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--ink-2);white-space:nowrap}
+.badge::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.badge.good{background:rgba(30,122,60,.12);color:var(--good)}.badge.warn{background:rgba(168,106,18,.14);color:var(--warn)}.badge.bad{background:rgba(177,55,47,.12);color:var(--bad)}
+
+/* ── dot plot ── */
+.dots{display:grid;grid-template-columns:150px minmax(0,1fr) 64px;row-gap:12px;column-gap:14px;align-items:center;font-size:13.5px}
+.dots .lab{color:var(--ink-2);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dots .line{position:relative;height:18px}
+.dots .line::before{content:"";position:absolute;left:0;right:0;top:9px;border-top:1px dashed var(--hair-2)}
+.dots .rg{position:absolute;top:6px;height:6px;border-radius:3px;background:var(--band)}
+.dots .pt{position:absolute;top:3px;width:12px;height:12px;border-radius:50%;background:var(--c-for);border:2px solid var(--surface);box-shadow:0 0 0 1px var(--c-for);transform:translateX(-50%)}
+.dots .val{text-align:right;font-weight:600}
+
+/* ── map ── */
+.map{position:relative;height:360px;background:radial-gradient(ellipse at 45% 50%,var(--accent-wash) 0,transparent 70%);border-radius:8px;overflow:hidden}
+.map svg{width:100%;height:100%}
+.map .lg{position:absolute;left:12px;bottom:10px;font-size:12px;color:var(--ink-3);display:flex;gap:10px;align-items:center}
+.map .lg i{display:inline-block;border-radius:50%;background:var(--band);border:1px solid var(--brand)}
+
+/* ── small multiples ── */
+.multi{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:16px}
+.ind{background:var(--surface);border:1px solid var(--hair);border-radius:10px;padding:14px 16px 12px;min-width:0}
+.ind .code{font:500 12px var(--mono);color:var(--ink-3);display:flex;justify-content:space-between;gap:8px}
+.ind .name{font-weight:600;margin-top:4px;line-height:1.3}
+.ind .v{font:600 28px/1 var(--display);letter-spacing:-.02em;margin-top:8px;display:flex;align-items:baseline;gap:5px}
+.ind .v small{font:500 12px var(--display);color:var(--ink-3)}
+.ind .row{display:flex;justify-content:space-between;font-size:12px;color:var(--ink-3);margin-top:8px}
+.tier{font:500 11px var(--mono);padding:1px 6px;border-radius:5px;background:var(--sunk);color:var(--ink-2)}
+.tier.t1{background:var(--accent-wash);color:var(--brand)}
+.rail{display:grid;grid-template-columns:230px minmax(0,1fr);gap:28px}
+.rail nav{position:sticky;top:12px;align-self:start;display:grid;gap:2px}
+.rail nav a{display:flex;align-items:center;gap:10px;padding:8px 10px;border-radius:8px;font-size:14px;color:var(--ink-2)}
+.rail nav a i{width:10px;height:10px;border-radius:3px;flex:none}
+.rail nav a span{margin-left:auto;font:500 12px var(--mono);color:var(--ink-3)}
+.rail nav a[aria-current]{background:var(--surface);color:var(--ink);font-weight:600;border:1px solid var(--hair)}
+.rail nav a.off{color:var(--ink-3)}
+.rail nav a.off::after{content:"not reported";font-size:11px;color:var(--ink-3);margin-left:6px}
+
+/* ── programme page ── */
+.ph{display:flex;gap:24px;align-items:flex-start;justify-content:space-between;flex-wrap:wrap}
+.pills{display:flex;gap:6px;flex-wrap:wrap;margin-top:10px}
+.pill{font-size:12.5px;padding:3px 9px;border-radius:999px;background:var(--sunk);color:var(--ink-2)}
+.cov{display:grid;grid-template-columns:repeat(auto-fill,minmax(34px,1fr));gap:4px}
+.cov span{height:34px;border-radius:5px;display:grid;place-items:center;font:500 10px var(--mono);color:var(--ink-3);background:var(--sunk);border:1px solid transparent}
+.cov span.on{background:var(--c-for);color:#fff}
+.cov span.req{border-color:var(--hair-2)}
+
+/* ── climate ── */
+.ledgers{display:grid;grid-template-columns:1fr 1fr;gap:20px}
+.ledger{padding:18px 20px;border-radius:10px;border:1px solid var(--hair);background:var(--surface)}
+.ledger.on{border-color:var(--brand);box-shadow:inset 0 0 0 1px var(--brand)}
+.ledger h3{margin:0;font:600 15px var(--display);display:flex;justify-content:space-between;align-items:center}
+.ledger .v{font:600 40px/1 var(--display);letter-spacing:-.03em;margin:10px 0 6px}
+.ledger .v small{font:500 14px var(--display);color:var(--ink-3);margin-left:6px}
+.ledger p{margin:0;color:var(--ink-3);font-size:13px}
+.hbar{display:grid;grid-template-columns:190px minmax(0,1fr) 70px;row-gap:10px;column-gap:12px;align-items:center;font-size:13.5px}
+.hbar .b{height:16px;border-radius:3px;background:var(--brand-2);position:relative}
+.hbar .b i{position:absolute;top:5px;height:6px;border-radius:3px;background:var(--ink);opacity:.25}
+.hbar .val{text-align:right;font-weight:600}
+.sens{display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:center}
+.sens label{display:block;font-size:13px;color:var(--ink-2);margin-bottom:6px}
+.sens input[type=range]{width:100%;accent-color:var(--brand)}
+.sens .out{font:600 44px/1 var(--display);letter-spacing:-.03em}
+.sens .out small{font:500 14px var(--display);color:var(--ink-3);margin-left:6px}
+
+/* ── briefing ── */
+.brief{background:var(--ink);color:var(--bg);min-height:560px;display:grid;grid-template-rows:auto 1fr auto}
+.brief .bar{display:flex;justify-content:space-between;padding:16px 28px;font-size:13px;opacity:.8}
+.slide{display:none;padding:20px 28px 40px;align-content:center}
+.slide.on{display:grid;gap:14px}
+.slide .k{font:600 13px var(--display);letter-spacing:.1em;text-transform:uppercase;opacity:.7}
+.slide .big{font:600 clamp(56px,10cqw,128px)/1 var(--display);letter-spacing:-.04em}
+.slide .big small{font:500 clamp(16px,2cqw,24px) var(--display);opacity:.75;margin-left:10px;letter-spacing:0}
+.slide p{font:400 clamp(18px,2.2cqw,26px)/1.4 var(--serif);max-width:44ch;margin:0;opacity:.95}
+.brief .ctl{display:flex;justify-content:space-between;align-items:center;padding:14px 28px;border-top:1px solid rgba(255,255,255,.12)}
+.brief .ctl .dotsn{display:flex;gap:6px}.brief .ctl .dotsn i{width:8px;height:8px;border-radius:50%;background:currentColor;opacity:.3}.brief .ctl .dotsn i.on{opacity:1}
+.brief .ctl button{border:1px solid rgba(255,255,255,.25);border-radius:8px;padding:6px 12px;color:inherit}
+
+.view{display:none}.view.on{display:block}
+footer.app{margin-top:36px;border-top:1px solid var(--hair);padding:20px 0 34px;color:var(--ink-3);font-size:12.5px;display:flex;justify-content:space-between;gap:16px;flex-wrap:wrap}
+footer.app b{color:var(--ink-2);font-weight:500}
+
+/* ── responsive by container ── */
+@container (max-width: 1180px){ .search{display:none} }
+@container (max-width: 900px){
+  .nav,.search{display:none}
+  .top{padding:0 16px;gap:12px}.ctx{padding:8px 16px}.wrap{padding:0 16px}
+  .basis{margin-left:0}
+  .kpis{grid-template-columns:1fr 1fr}.kpi{border-right:0;margin-right:0;padding:14px 0;border-bottom:1px solid var(--hair)}
+  .insights{grid-template-columns:1fr}
+  .g-12>*{grid-column:span 12}
+  .multi{grid-template-columns:1fr}
+  .rail{grid-template-columns:1fr}.rail nav{position:static;display:flex;overflow-x:auto;gap:6px;padding-bottom:6px}.rail nav a{white-space:nowrap;border:1px solid var(--hair)}.rail nav a.off::after{display:none}
+  .dots{grid-template-columns:104px minmax(0,1fr) 54px}
+  .hbar{grid-template-columns:120px minmax(0,1fr) 56px}
+  .ledgers,.sens{grid-template-columns:1fr}
+  .map{height:300px}
+  table.bul{min-width:520px}
+}
+@container (max-width: 520px){
+  .kpis{grid-template-columns:1fr}
+  .scrub{overflow-x:auto;max-width:100%}
+}
+</style>
+
+<div class="proto" role="region" aria-label="Prototype controls">
+  <span><b>Prototype</b> of the proposed CAFI Metrics Hub design · static data as of 2025 · click through the views</span>
+  <div class="seg" role="group" aria-label="Frame">
+    <button id="frame-desktop" aria-pressed="true" type="button">Desktop</button>
+    <button id="frame-phone" aria-pressed="false" type="button">Phone</button>
+  </div>
+  <div class="seg" role="group" aria-label="Theme">
+    <button id="theme-light" aria-pressed="true" type="button">Light</button>
+    <button id="theme-dark" aria-pressed="false" type="button">Dark</button>
+  </div>
+</div>
+
+<div class="stage"><div class="device" id="device">
+  <header class="top">
+    <a class="brand" href="#overview"><span class="mark"></span>CAFI <small>Metrics Hub</small></a>
+    <nav class="nav" aria-label="Main">
+      <span class="grp">Results</span><a href="#overview" data-view="overview">Overview</a><a href="#outcomes" data-view="outcomes">Outcomes</a><a href="#programme" data-view="programme">Programmes</a>
+      <span class="grp">Finance</span><a href="#portfolio">Portfolio</a>
+      <span class="grp">Climate</span><a href="#climate" data-view="climate">Carbon</a>
+      <span class="grp">Data</span><a href="#quality">Quality</a><a href="#method">Method</a>
+    </nav>
+    <div class="util">
+      <div class="search" aria-hidden="true">Search programmes, indicators, projects<kbd>⌘K</kbd></div>
+      <button class="ibtn" type="button" aria-label="Language: English">FR</button>
+      <a class="ibtn primary" href="#brief" data-view="brief">Brief ↗</a>
+    </div>
+  </header>
+
+  <div class="ctx" id="ctx">
+    <div class="scrub" role="group" aria-label="As of year"><span class="lbl">As of</span>
+      <button type="button" data-year="2020">2020</button><button type="button" data-year="2021">2021</button><button type="button" data-year="2022">2022</button><button type="button" data-year="2023">2023</button><button type="button" data-year="2024">2024</button><button type="button" data-year="2025" aria-pressed="true">2025</button><button type="button" class="part" data-year="2026" title="2026, partial year">2026</button>
+    </div>
+    <span class="chip"><span class="k">Country</span> All ▾</span><span class="chip"><span class="k">Partner</span> All ▾</span><span class="chip"><span class="k">Programme</span> All ▾</span>
+    <div class="seg basis" role="group" aria-label="Basis"><button type="button" aria-pressed="true">Ex ante</button><button type="button" aria-pressed="false">Ex post</button></div>
+  </div>
+
+  <!-- ═════════ OVERVIEW ═════════ -->
+  <main class="view on" id="view-overview">
+    <div class="wrap">
+      <div class="mast">
+        <div class="eyebrow"><i></i>Portfolio results · 31 programmes · 6 countries · data refreshed 30 Oct 2026</div>
+        <h1 class="title">CAFI-funded programmes have put <span class="num" id="ha-title">763,000</span> hectares under restoration, sustainable use or protection.</h1>
+        <p class="lede">Cumulative results reported by implementing partners, re-coded to the CAFI standard indicators and converted to climate benefit with method 2.0. Every figure links to its source rows and its method.</p>
+        <div class="meta"><span><b>Source</b> ProjectData.xlsx · CumulResults</span><span><b>Method</b> carbon 2.0 · two ledgers</span><span><b>Quality</b> 0 errors · 5 warnings</span></div>
+      </div>
+
+      <div class="kpis">
+        <div class="kpi"><div class="l">Net GHG benefit, expected <span class="dq" title="Two parameters still on defaults"></span></div>
+          <div class="v num">11.0<small>Mt CO₂e</small></div>
+          <div class="band"><span class="rng" style="left:28%;width:52%"></span><span class="pt" style="left:54%"></span></div>
+          <div class="d">p5–p95 5.7–16.3 Mt · inventory removals 13.4 Mt</div></div>
+        <div class="kpi"><div class="l">Hectares restored, used sustainably or protected</div>
+          <div class="v num"><span id="ha-kpi">763</span><small>k ha</small></div>
+          <svg class="spark" data-spark="142,205,432,627,714,763,763" data-color="var(--c-for)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="d"><span class="up">+48.7k</span> vs 2024</div></div>
+        <div class="kpi"><div class="l">Programmes reporting</div>
+          <div class="v num">31<small>of 80 projects</small></div>
+          <svg class="spark" data-spark="9,13,17,21,24,31,31" data-color="var(--brand)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg>
+          <div class="d">22 active in 2025 · 3 unlinked to MPTF</div></div>
+        <div class="kpi"><div class="l">Direct beneficiaries</div>
+          <div class="v num">902<small>k people</small></div>
+          <div class="d" style="margin-top:22px">Portfolio constant · source pending</div></div>
+        <div class="kpi"><div class="l">Approved budget</div>
+          <div class="v num">$927<small>m</small></div>
+          <div class="band"><span class="rng" style="left:0;width:39%;background:var(--brand)"></span></div>
+          <div class="d">39 % spent · 71 % transferred</div></div>
+      </div>
+
+      <section class="sec">
+        <div class="sec-h"><div><h2>What changed in 2025</h2><p>Generated from the data at each refresh, each statement linked to the rows behind it.</p></div><a class="act" href="#brief" data-view="brief">Open the briefing →</a></div>
+        <div class="insights">
+          <div class="insight"><div class="k">Largest gain</div><p><a href="#programme" data-view="programme">PIREDD Equateur</a> added 41,200 ha of sustainably managed forest, two thirds of the portfolio's hectare growth this year.</p></div>
+          <div class="insight"><div class="k">Off track</div><p>Four programmes are below half of their expected pace; <a href="#programme" data-view="programme">Grand Mbam</a> has not reported a result since 2023.</p></div>
+          <div class="insight"><div class="k">Carbon</div><p>Method 2.0 puts the expected benefit at <a href="#climate" data-view="climate">11 Mt CO₂e</a> against 31 under the old coefficients; natural regeneration is now the largest contributor.</p></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="sec-h"><div><h2>Progress by outcome</h2><p>Achievement against final targets, with the expected pace for the programme period.</p></div><a class="act" href="#outcomes" data-view="outcomes">All nine categories →</a></div>
+        <div class="fig">
+          <div class="tbl-wrap"><table class="bul">
+            <thead><tr><th>Outcome</th><th>Achievement vs target</th><th style="text-align:right">Reached</th><th>Indicators</th><th>Trend</th><th>Status</th></tr></thead>
+            <tbody>
+              <tr><td><span class="cat"><i style="background:var(--c-enr)"></i>Energy &amp; clean cooking</span></td><td><div class="bullet"><span class="q" style="width:60%"></span><span class="m" style="width:100%;background:var(--c-enr)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">120 %</td><td>1 of 4</td><td><svg class="spark" style="width:90px;margin:0" data-spark="12,18,30,52,68,74,74" data-color="var(--c-enr)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></td><td><span class="badge good">Target reached</span></td></tr>
+              <tr><td><span class="cat"><i style="background:var(--c-gov)"></i>Governance &amp; policy</span></td><td><div class="bullet"><span class="q" style="width:72%"></span><span class="m" style="width:87%;background:var(--c-gov)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">87 %</td><td>1 of 9</td><td><svg class="spark" style="width:90px;margin:0" data-spark="33,52,74,78,82,87,87" data-color="var(--c-gov)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></td><td><span class="badge good">On track</span></td></tr>
+              <tr><td><span class="cat"><i style="background:var(--c-ppl)"></i>People &amp; livelihoods</span></td><td><div class="bullet"><span class="q" style="width:65%"></span><span class="m" style="width:49%;background:var(--c-ppl)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">49 %</td><td>2 of 6</td><td><svg class="spark" style="width:90px;margin:0" data-spark="5,9,18,30,41,49,49" data-color="var(--c-ppl)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></td><td><span class="badge warn">Behind</span></td></tr>
+              <tr><td><span class="cat"><i style="background:var(--c-for)"></i>Forests &amp; biodiversity</span></td><td><div class="bullet"><span class="q" style="width:62%"></span><span class="m" style="width:30%;background:var(--c-for)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">30 %</td><td>5 of 14</td><td><svg class="spark" style="width:90px;margin:0" data-spark="4,6,12,22,27,30,30" data-color="var(--c-for)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></td><td><span class="badge warn">Behind</span></td></tr>
+              <tr><td><span class="cat"><i style="background:var(--c-agr)"></i>Sustainable agriculture</span></td><td><div class="bullet"><span class="q" style="width:58%"></span><span class="m" style="width:25%;background:var(--c-agr)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">25 %</td><td>3 of 8</td><td><svg class="spark" style="width:90px;margin:0" data-spark="3,6,11,17,22,25,25" data-color="var(--c-agr)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></td><td><span class="badge bad">Off track</span></td></tr>
+              <tr><td><span class="cat"><i style="background:var(--c-lut)"></i>Land-use planning &amp; tenure</span></td><td><div class="bullet"><span class="q" style="width:55%"></span><span class="m" style="width:17%;background:var(--c-lut)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">17 %</td><td>3 of 10</td><td><svg class="spark" style="width:90px;margin:0" data-spark="2,3,6,10,14,17,17" data-color="var(--c-lut)" viewBox="0 0 100 28" preserveAspectRatio="none" aria-hidden="true"></svg></td><td><span class="badge bad">Off track</span></td></tr>
+            </tbody>
+          </table></div>
+          <div class="fig-f"><span>Grey bar = expected pace at 2025 · black tick = final target · three categories have no reported results yet</span><a href="#method">Method: Σ results ÷ Σ targets ↗</a></div>
+        </div>
+      </section>
+
+      <section class="sec">
+        <div class="grid g-12">
+          <div class="fig span-7">
+            <div class="fig-h"><div><h3>Where programmes work</h3><div class="sub">Hectares by country · circle area ∝ hectares · click to filter</div></div><div class="tools"><button type="button" aria-label="Table view">▦</button><button type="button" aria-label="Download CSV">⤓</button><button type="button" aria-label="Download image">▣</button></div></div>
+            <div class="map">
+              <svg viewBox="0 0 700 360" aria-label="Map of Central Africa with hectares per country">
+                <g fill="none" stroke="var(--hair-2)" stroke-width="1.2">
+                  <path d="M300 50 L360 42 L430 60 L470 110 L480 190 L450 260 L400 310 L330 320 L280 290 L250 230 L240 160 L260 100 Z"/>
+                  <path d="M300 50 L250 100 L200 110 L180 160 L220 220 L250 230"/><path d="M180 160 L130 180 L120 240 L170 270 L220 250"/><path d="M360 42 L380 12 L440 4 L500 32 L470 110"/><path d="M120 240 L90 290 L140 330 L200 310"/>
+                </g>
+                <g font-family="Instrument Sans, system-ui, sans-serif" font-size="12" fill="var(--ink-2)">
+                  <circle cx="380" cy="190" r="84" fill="var(--band)" stroke="var(--brand)" stroke-width="1.5"/><text x="380" y="186" text-anchor="middle" font-weight="600" font-size="14" fill="var(--ink)">DR Congo</text><text x="380" y="204" text-anchor="middle">762k ha · 24 programmes</text>
+                  <circle cx="190" cy="225" r="8" fill="var(--band)" stroke="var(--brand)" stroke-width="1.5"/><text x="150" y="255">Rep. of Congo · 1.3k ha</text>
+                  <circle cx="235" cy="110" r="5" fill="var(--band)" stroke="var(--brand)" stroke-width="1.5"/><text x="150" y="95">Cameroon · 3 programmes, no hectares</text>
+                  <circle cx="140" cy="290" r="5" fill="var(--band)" stroke="var(--brand)" stroke-width="1.5"/><text x="60" y="325">Gabon · 4 programmes</text>
+                  <circle cx="430" cy="32" r="4" fill="var(--band)" stroke="var(--brand)" stroke-width="1.5"/><text x="445" y="36">CAR · 1 programme</text>
+                </g>
+              </svg>
+              <div class="lg"><i style="width:8px;height:8px"></i>1k<i style="width:16px;height:16px"></i>100k<i style="width:28px;height:28px"></i>750k ha</div>
+            </div>
+            <div class="fig-f"><span>Only DR Congo and Republic of Congo report hectares; other results are on the Outcomes page</span><a href="#quality">Rows ↗</a></div>
+          </div>
+          <div class="fig span-5">
+            <div class="fig-h"><div><h3>Top programmes by hectares</h3><div class="sub">As of 2025 · bar = p5–p95 of the carbon estimate</div></div><div class="tools"><button type="button" aria-label="Table view">▦</button><button type="button" aria-label="Download CSV">⤓</button></div></div>
+            <div class="dots" style="margin-top:14px">
+              <span class="lab">PIREDD Equateur</span><div class="line"><span class="rg" style="left:70%;width:26%"></span><span class="pt" style="left:84%"></span></div><span class="val num">277k</span>
+              <span class="lab">PIREDD Maniema 1</span><div class="line"><span class="rg" style="left:66%;width:26%"></span><span class="pt" style="left:79%"></span></div><span class="val num">263k</span>
+              <span class="lab">Indigenous peoples</span><div class="line"><span class="rg" style="left:26%;width:18%"></span><span class="pt" style="left:34%"></span></div><span class="val num">112k</span>
+              <span class="lab">PIREDD Oriental</span><div class="line"><span class="rg" style="left:8%;width:10%"></span><span class="pt" style="left:12%"></span></div><span class="val num">40k</span>
+              <span class="lab">PIREDD Mai-Ndombe</span><div class="line"><span class="rg" style="left:4%;width:8%"></span><span class="pt" style="left:7%"></span></div><span class="val num">24k</span>
+              <span class="lab">PIREDD Kwilu</span><div class="line"><span class="rg" style="left:3%;width:7%"></span><span class="pt" style="left:6%"></span></div><span class="val num">20k</span>
+              <span class="lab">PIREDD Plateau</span><div class="line"><span class="rg" style="left:2%;width:6%"></span><span class="pt" style="left:4%"></span></div><span class="val num">15k</span>
+              <span class="lab">PSFD 1</span><div class="line"><span class="rg" style="left:1%;width:3%"></span><span class="pt" style="left:2%"></span></div><span class="val num">7k</span>
+            </div>
+            <div class="fig-f"><span>8 of 31 programmes shown</span><a href="#programme" data-view="programme">All programmes ↗</a></div>
+          </div>
+        </div>
+      </section>
+      <footer class="app"><span><b>CAFI Metrics Hub</b> · data refreshed 30 Oct 2026 · method 2.0 · <a href="#quality" style="color:var(--brand)">Data quality</a> · <a href="#method" style="color:var(--brand)">Methodology</a></span><span>Shareable link encodes year, filters and basis · PNG and CSV on every figure · fact sheet PDF per programme</span></footer>
+    </div>
+  </main>
+
+  <!-- ═════════ OUTCOMES ═════════ -->
+  <main class="view" id="view-outcomes">
+    <div class="wrap">
+      <div class="mast" style="padding-bottom:18px">
+        <div class="eyebrow"><i style="background:var(--c-for)"></i>Outcomes · Forests &amp; biodiversity · FOR · outcome 2</div>
+        <h1 class="title">Five of fourteen forest indicators are reported, by seventeen programmes.</h1>
+        <p class="lede">Sustainable forest management, certification, conservation, natural regeneration and plantations, fire and human-wildlife conflict, forest monitoring, control and legality.</p>
+      </div>
+      <section class="sec">
+        <div class="rail">
+          <nav aria-label="Categories">
+            <a href="#outcomes"><i style="background:var(--c-gov)"></i>Governance &amp; policy<span>1/9</span></a>
+            <a href="#outcomes" aria-current="page"><i style="background:var(--c-for)"></i>Forests &amp; biodiversity<span>5/14</span></a>
+            <a href="#outcomes" class="off"><i style="background:var(--c-fin)"></i>Finance &amp; PES<span>0/10</span></a>
+            <a href="#outcomes"><i style="background:var(--c-lut)"></i>Land-use &amp; tenure<span>3/10</span></a>
+            <a href="#outcomes"><i style="background:var(--c-agr)"></i>Sustainable agriculture<span>3/8</span></a>
+            <a href="#outcomes"><i style="background:var(--c-enr)"></i>Energy &amp; cooking<span>1/4</span></a>
+            <a href="#outcomes" class="off"><i style="background:var(--c-clm)"></i>Climate &amp; MRV<span>0/3</span></a>
+            <a href="#outcomes" class="off"><i style="background:var(--c-inc)"></i>Demography &amp; inclusion<span>0/3</span></a>
+            <a href="#outcomes"><i style="background:var(--c-ppl)"></i>People &amp; livelihoods<span>2/6</span></a>
+          </nav>
+          <div>
+            <div class="multi">
+              <div class="ind"><div class="code"><span>FOR-03 · Management &amp; certification</span><span class="tier">T2 headline</span></div><div class="name">Area under sustainable forest management</div><div class="v num">606.6<small>k ha</small></div><div class="bullet" style="margin-top:10px"><span class="q" style="width:60%"></span><span class="m" style="width:26%;background:var(--c-for)"></span><span class="t" style="left:100%"></span></div><div class="row"><span>26 % of 2.3m ha target</span><span class="up">+13.6k</span></div></div>
+              <div class="ind"><div class="code"><span>FOR-01 · Restoration &amp; plantations</span><span class="tier">T2 headline</span></div><div class="name">Area under natural regeneration</div><div class="v num">55.4<small>k ha</small></div><div class="bullet" style="margin-top:10px"><span class="q" style="width:60%"></span><span class="m" style="width:22%;background:var(--c-for)"></span><span class="t" style="left:100%"></span></div><div class="row"><span>22 % of 181k ha target</span><span class="up">+17.5k</span></div></div>
+              <div class="ind"><div class="code"><span>FOR-13 · Fire &amp; wildlife</span><span class="tier">T3</span></div><div class="name">Cropland protected by electric fences</div><div class="v num">2.5<small>k ha</small></div><div class="bullet" style="margin-top:10px"><span class="q" style="width:60%"></span><span class="m" style="width:100%;background:var(--c-for)"></span><span class="t" style="left:100%"></span></div><div class="row"><span>100 % of 2.5k ha target</span><span class="up">+2.5k</span></div></div>
+              <div class="ind"><div class="code"><span>FOR-02 · Restoration &amp; plantations</span><span class="tier">T2 headline</span></div><div class="name">Area of tree plantations</div><div class="v num">0<small>ha</small></div><div class="bullet" style="margin-top:10px"><span class="q" style="width:60%"></span><span class="t" style="left:100%"></span></div><div class="row"><span>0 % of 1,000 ha target</span><span>reported by 1 programme</span></div></div>
+              <div class="ind"><div class="code"><span>FOR-04 · Conservation</span><span class="tier">T2 headline</span></div><div class="name">Forest area under conservation</div><div class="v num">0<small>ha</small></div><div class="bullet" style="margin-top:10px"><span class="q" style="width:60%"></span><span class="t" style="left:100%"></span></div><div class="row"><span>0 % of 2.3m ha target</span><span>3 programmes, no result yet</span></div></div>
+              <div class="ind" style="border-style:dashed;background:transparent"><div class="code"><span>9 more standard indicators</span><span class="tier t1">T1 core ×2</span></div><div class="name" style="color:var(--ink-3)">Not reported yet: certified area, management plans, legality system, alerts, firebreaks, community forests, monitoring…</div><div class="row"><span>13 projects expected to report FOR-05</span><a class="act" href="#method">Catalogue ↗</a></div></div>
+            </div>
+
+            <section class="sec" style="padding-top:22px">
+              <div class="grid g-12">
+                <div class="fig span-7">
+                  <div class="fig-h"><div><h3>Area under sustainable forest management, by programme</h3><div class="sub">Result against programme target · as of 2025</div></div><div class="tools"><button type="button" aria-label="Table view">▦</button><button type="button" aria-label="Download CSV">⤓</button></div></div>
+                  <div class="dots" style="margin-top:14px">
+                    <span class="lab">PIREDD Equateur</span><div class="line"><span class="rg" style="left:0;width:92%;background:var(--sunk)"></span><span class="pt" style="left:88%"></span></div><span class="val num">260k</span>
+                    <span class="lab">PIREDD Maniema 1</span><div class="line"><span class="rg" style="left:0;width:80%;background:var(--sunk)"></span><span class="pt" style="left:79%"></span></div><span class="val num">235k</span>
+                    <span class="lab">Indigenous peoples</span><div class="line"><span class="rg" style="left:0;width:60%;background:var(--sunk)"></span><span class="pt" style="left:38%"></span></div><span class="val num">112k</span>
+                    <span class="lab">PIREDD Mongala</span><div class="line"><span class="rg" style="left:0;width:40%;background:var(--sunk)"></span><span class="pt" style="left:1%"></span></div><span class="val num">1.9k</span>
+                  </div>
+                  <div class="fig-f"><span>Grey = programme target · dot = result · click a programme to open it</span><a href="#programme" data-view="programme">PIREDD Kwilu ↗</a></div>
+                </div>
+                <div class="fig span-5">
+                  <div class="fig-h"><div><h3>Trajectory</h3><div class="sub">Cumulative result vs final target, k ha</div></div></div>
+                  <svg class="chart" data-line="18,52,110,300,540,593,607" data-max="760" data-target="2300" data-color="var(--c-for)" viewBox="0 0 320 180" aria-label="Trajectory chart"></svg>
+                  <div class="fig-f"><span>2020 → 2026 · 2026 partial</span><a href="#quality">14 rows ↗</a></div>
+                </div>
+              </div>
+            </section>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ═════════ PROGRAMME ═════════ -->
+  <main class="view" id="view-programme">
+    <div class="wrap">
+      <div class="mast" style="padding-bottom:18px">
+        <div class="ph">
+          <div>
+            <div class="eyebrow"><i></i>Programmes · DR Congo · JICA · 2018–2026 · MPTF 113547 · FONAREDD</div>
+            <h1 class="title">PIREDD Kwilu</h1>
+            <div class="pills"><span class="badge good">On track</span><span class="pill">Integrated REDD+ programme</span><span class="pill">AFOLU + PES</span><span class="pill">Claim: national programme · to confirm</span></div>
+          </div>
+          <div style="display:flex;gap:8px;flex-wrap:wrap"><a class="ibtn" href="#programme">Compare ⇄</a><a class="ibtn primary" href="#programme">Fact sheet PDF ↓</a></div>
+        </div>
+      </div>
+      <div class="kpis" style="grid-template-columns:repeat(4,minmax(0,1fr))">
+        <div class="kpi"><div class="l">Average achievement</div><div class="v num">90<small>%</small></div><div class="band"><span class="rng" style="left:0;width:90%;background:var(--c-for)"></span></div><div class="d">5 indicators · 23 rows · 7 of 9 years elapsed</div></div>
+        <div class="kpi"><div class="l">Net GHG benefit expected <span class="badge" style="font-size:11px">ex ante</span></div><div class="v num">412<small>kt CO₂e</small></div><div class="band"><span class="rng" style="left:30%;width:50%"></span><span class="pt" style="left:55%"></span></div><div class="d">realised 71 kt · removals 503 kt</div></div>
+        <div class="kpi"><div class="l">Funding (MPTF)</div><div class="v num">$18.0<small>m</small></div><div class="band"><span class="rng" style="left:0;width:81%;background:var(--brand)"></span></div><div class="d">81 % of transfers spent</div></div>
+        <div class="kpi"><div class="l">Expected indicators reported</div><div class="v num">4<small>of 12</small></div><div class="band"><span class="rng" style="left:0;width:33%;background:var(--brand)"></span></div><div class="d">8 mandatory or activity-required still missing</div></div>
+      </div>
+
+      <section class="sec">
+        <div class="grid g-12">
+          <div class="fig span-7">
+            <div class="fig-h"><div><h3>Results against targets</h3><div class="sub">Each indicator the programme reports · as of 2025</div></div></div>
+            <div class="tbl-wrap"><table class="bul">
+              <thead><tr><th>Indicator</th><th>Achievement vs target</th><th style="text-align:right">Result</th><th>Status</th></tr></thead>
+              <tbody>
+                <tr><td><span class="cat"><i style="background:var(--c-gov)"></i>GOV-03 Local governance structures</span></td><td><div class="bullet"><span class="q" style="width:78%"></span><span class="m" style="width:90%;background:var(--c-gov)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">290</td><td><span class="badge good">On track</span></td></tr>
+                <tr><td><span class="cat"><i style="background:var(--c-agr)"></i>AGR-03 Agroforestry</span></td><td><div class="bullet"><span class="q" style="width:78%"></span><span class="m" style="width:100%;background:var(--c-agr)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">5,100 ha</td><td><span class="badge good">Target reached</span></td></tr>
+                <tr><td><span class="cat"><i style="background:var(--c-agr)"></i>AGR-01 Improved food crops</span></td><td><div class="bullet"><span class="q" style="width:78%"></span><span class="m" style="width:64%;background:var(--c-agr)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">9,900 ha</td><td><span class="badge warn">Behind</span></td></tr>
+                <tr><td><span class="cat"><i style="background:var(--c-for)"></i>FOR-01 Natural regeneration</span></td><td><div class="bullet"><span class="q" style="width:78%"></span><span class="m" style="width:96%;background:var(--c-for)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">14,700 ha</td><td><span class="badge good">On track</span></td></tr>
+                <tr><td><span class="cat"><i style="background:var(--c-lut)"></i>LUT-01 Land-use plans validated</span></td><td><div class="bullet"><span class="q" style="width:78%"></span><span class="m" style="width:100%;background:var(--c-lut)"></span><span class="t" style="left:100%"></span></div></td><td class="n num">182</td><td><span class="badge good">Target reached</span></td></tr>
+              </tbody>
+            </table></div>
+            <div class="fig-f"><span>Grey = expected pace · tick = target</span><a href="#quality">23 rows ↗</a></div>
+          </div>
+          <div class="fig span-5">
+            <div class="fig-h"><div><h3>Expected standard indicators</h3><div class="sub">From the project's type and activities · green = reported</div></div></div>
+            <div class="cov" style="margin-top:12px">
+              <span class="on req" title="GOV-03 reported">GOV<br>03</span><span class="req" title="GOV-01 mandatory, missing">GOV<br>01</span><span class="on req">AGR<br>03</span><span class="on req">AGR<br>01</span><span class="on req">FOR<br>01</span><span class="on">LUT<br>01</span><span class="req">CLM<br>01</span><span class="req">CLM<br>02</span><span class="req">PPL<br>01</span><span class="req">FIN<br>03</span><span class="req">FIN<br>04</span><span class="req">LUT<br>02</span><span>AGR<br>04</span><span>AGR<br>05</span><span>FOR<br>10</span><span>ENR<br>01</span>
+            </div>
+            <div class="fig-f"><span>Outlined = mandatory or required by activity · plain = optional</span><a href="#method">Project page ↗</a></div>
+          </div>
+          <div class="fig span-12">
+            <div class="fig-h"><div><h3>Trajectories</h3><div class="sub">Cumulative result against final target, each indicator at the same scale of its own target</div></div></div>
+            <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(200px,1fr));margin-top:10px">
+              <div><div class="code" style="font:500 12px var(--mono);color:var(--ink-3)">GOV-03</div><svg class="chart" data-line="60,110,170,220,250,290,290" data-max="340" data-target="322" data-color="var(--c-gov)" viewBox="0 0 320 150" aria-label="GOV-03 trajectory"></svg></div>
+              <div><div class="code" style="font:500 12px var(--mono);color:var(--ink-3)">AGR-03</div><svg class="chart" data-line="400,1200,2600,4100,4800,5100,5100" data-max="5500" data-target="5000" data-color="var(--c-agr)" viewBox="0 0 320 150" aria-label="AGR-03 trajectory"></svg></div>
+              <div><div class="code" style="font:500 12px var(--mono);color:var(--ink-3)">FOR-01</div><svg class="chart" data-line="1200,3800,7400,10900,13200,14700,14700" data-max="16500" data-target="15300" data-color="var(--c-for)" viewBox="0 0 320 150" aria-label="FOR-01 trajectory"></svg></div>
+              <div><div class="code" style="font:500 12px var(--mono);color:var(--ink-3)">AGR-01</div><svg class="chart" data-line="800,2400,4900,7300,8900,9900,9900" data-max="16500" data-target="15500" data-color="var(--c-agr)" viewBox="0 0 320 150" aria-label="AGR-01 trajectory"></svg></div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ═════════ CLIMATE ═════════ -->
+  <main class="view" id="view-climate">
+    <div class="wrap">
+      <div class="mast" style="padding-bottom:18px">
+        <div class="eyebrow"><i></i>Climate · method 2.0 · as of 2025 · ex ante</div>
+        <h1 class="title">Two ledgers, never netted: what the land stores, and what the programmes change.</h1>
+        <p class="lede">The inventory ledger counts carbon stock changes inside programme boundaries. The intervention ledger counts the net benefit against a baseline, after leakage and a non-permanence buffer. Bands are the 5th to 95th percentile of 2,000 draws over the published uncertainties.</p>
+      </div>
+      <section class="sec">
+        <div class="ledgers" id="ledgers">
+          <button type="button" class="ledger on" data-ledger="intervention" aria-pressed="true"><h3>Intervention ledger <span class="badge">net benefit</span></h3><div class="v num">11.0<small>Mt CO₂e expected</small></div><p>p5–p95 5.7–16.3 · realised to date 1.7 Mt · after 20 % buffer and leakage</p></button>
+          <button type="button" class="ledger" data-ledger="inventory" aria-pressed="false"><h3>Inventory ledger <span class="badge">removals</span></h3><div class="v num">13.4<small>Mt CO₂e expected</small></div><p>p5–p95 7.1–19.9 · realised to date 1.8 Mt · emissions booked 0</p></button>
+        </div>
+      </section>
+      <section class="sec">
+        <div class="grid g-12">
+          <div class="fig span-6">
+            <div class="fig-h"><div><h3>By archetype</h3><div class="sub" id="arch-sub">Intervention ledger · expected, Mt CO₂e · bar inside = p5–p95</div></div></div>
+            <div class="hbar" id="arch" style="margin-top:14px">
+              <span>Natural regeneration</span><div class="b" style="width:69%"><i style="left:44%;width:56%"></i></div><span class="val num" data-int="5.3" data-inv="6.8">5.3</span>
+              <span>Perennial crops</span><div class="b" style="width:49%"><i style="left:57%;width:43%"></i></div><span class="val num" data-int="3.8" data-inv="4.7">3.8</span>
+              <span>Agroforestry</span><div class="b" style="width:17%"><i style="left:78%;width:22%"></i></div><span class="val num" data-int="1.3" data-inv="1.7">1.3</span>
+              <span>Clean cooking</span><div class="b" style="width:7%"><i style="left:38%;width:62%"></i></div><span class="val num" data-int="0.56" data-inv="0">0.56</span>
+              <span>Forest protection</span><div class="b" style="width:0.5%"></div><span class="val num" data-int="0" data-inv="0">0</span>
+            </div>
+            <div class="fig-f"><span>Soil carbon 0.58 Mt indicative and fuelwood displacement 0.50 Mt potential are shown apart</span><a href="#method">Per-unit values ↗</a></div>
+          </div>
+          <div class="fig span-6">
+            <div class="fig-h"><div><h3>Expected and realised over time</h3><div class="sub">Full cycle of what is in place each year · band = p5–p95</div></div></div>
+            <svg class="chart" data-line="0.5,2.4,4.7,7.1,8.3,11.0,11.0" data-low="0.3,1.3,2.5,3.7,4.3,5.7,5.7" data-high="0.8,3.6,7.0,10.6,12.4,16.3,16.3" data-line2="0,0.1,0.3,0.6,1.1,1.7,2.5" data-max="18" data-unit="Mt" data-color="var(--brand)" viewBox="0 0 520 220" aria-label="Expected and realised over time"></svg>
+            <div class="fig-f"><span>Black = realised to date · marker = selected year</span><a href="#method">Cohort rule ↗</a></div>
+          </div>
+          <div class="fig span-12">
+            <div class="fig-h"><div><h3>Sensitivity</h3><div class="sub">Drag a parameter within its published range and watch the ledgers respond. Makes the defaults debatable in the open.</div></div></div>
+            <div class="sens" style="margin-top:12px">
+              <div>
+                <label for="s-fnrb">Fraction of non-renewable biomass, DRC <span class="num" id="s-fnrb-v">0.42</span> <span style="color:var(--ink-3)">(CDM TOOL33 national default; p5–p95 0.14–0.70)</span></label>
+                <input id="s-fnrb" type="range" min="0.14" max="0.70" step="0.01" value="0.42">
+                <label for="s-rot" style="margin-top:14px">Rotation of wood-energy systems <span class="num" id="s-rot-v">10</span> years <span style="color:var(--ink-3)">(8–12, to confirm)</span></label>
+                <input id="s-rot" type="range" min="8" max="12" step="1" value="10">
+                <label for="s-buf" style="margin-top:14px">Non-permanence buffer <span class="num" id="s-buf-v">20</span> % <span style="color:var(--ink-3)">(VCS risk tool 10–40)</span></label>
+                <input id="s-buf" type="range" min="10" max="40" step="1" value="20">
+              </div>
+              <div>
+                <div class="eyebrow">Net GHG benefit, expected</div>
+                <div class="out num"><span id="s-out">11.0</span><small>Mt CO₂e</small></div>
+                <div style="color:var(--ink-3);font-size:13px;margin-top:6px">Cooking <span class="num" id="s-cook">0.56</span> · harvested systems <span class="num" id="s-harv">1.3</span> · buffer applied to <span class="num" id="s-bufc">12.7</span> Mt of removals</div>
+                <a class="act" href="#method" style="display:inline-block;margin-top:10px">Propose this change as a factor-library version ↗</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+    </div>
+  </main>
+
+  <!-- ═════════ BRIEFING ═════════ -->
+  <main class="view" id="view-brief">
+    <div class="brief" id="brief" tabindex="0" aria-label="Briefing mode, use arrow keys">
+      <div class="bar"><span>CAFI Metrics Hub · briefing · as of 2025</span><span>← → to move · Esc to leave</span></div>
+      <div class="slide on"><div class="k">01 · Hectares</div><div class="big num">763<small>thousand ha</small></div><p>restored, sustainably used or protected by 31 programmes, up 48,700 ha in 2025. Two programmes in Equateur and Maniema hold two thirds of it.</p></div>
+      <div class="slide"><div class="k">02 · Climate</div><div class="big num">11.0<small>Mt CO₂e</small></div><p>expected net benefit over the full cycle, within a 5.7–16.3 band. Removals in the inventory ledger: 13.4 Mt. Realised to date: 1.7 Mt.</p></div>
+      <div class="slide"><div class="k">03 · Pace</div><div class="big num">4<small>programmes</small></div><p>are below half of their expected pace. Energy and clean cooking has passed its target; land-use planning and sustainable agriculture are furthest behind.</p></div>
+      <div class="slide"><div class="k">04 · Finance</div><div class="big num">$927<small>million</small></div><p>approved across 79 projects; 39 % spent, 71 % transferred. 28 projects are linked to a results programme; 126 of 459 expected indicators are reported.</p></div>
+      <div class="slide"><div class="k">05 · Data</div><div class="big num">0<small>blocking errors</small></div><p>5 warnings and 9 notes on the last refresh. Two carbon defaults await the adoption and fuel-saving surveys; one programme has not reported since 2023.</p></div>
+      <div class="ctl"><button type="button" id="b-prev">← Previous</button><div class="dotsn"><i class="on"></i><i></i><i></i><i></i><i></i></div><button type="button" id="b-next">Next →</button></div>
+    </div>
+  </main>
+</div></div>
+
+<script>
+(function(){
+  var root=document.documentElement;
+  var views=['overview','outcomes','programme','climate','brief'];
+  function show(v){ if(views.indexOf(v)<0) v='overview';
+    views.forEach(function(x){ var el=document.getElementById('view-'+x); el.classList.toggle('on', x===v); });
+    document.querySelectorAll('.nav a[data-view]').forEach(function(a){ if(a.dataset.view===v) a.setAttribute('aria-current','page'); else a.removeAttribute('aria-current'); });
+    document.getElementById('ctx').style.display = (v==='brief') ? 'none' : '';
+    if(v==='brief'){ var b=document.getElementById('brief'); if(b) b.focus({preventScroll:true}); }
+  }
+  function route(){ show((location.hash||'#overview').slice(1)); }
+  window.addEventListener('hashchange', route); route();
+
+  // frame + theme
+  var dev=document.getElementById('device');
+  function press(id,on){ document.getElementById(id).setAttribute('aria-pressed', on?'true':'false'); }
+  document.getElementById('frame-desktop').onclick=function(){ dev.classList.remove('phone'); press('frame-desktop',true); press('frame-phone',false); };
+  document.getElementById('frame-phone').onclick=function(){ dev.classList.add('phone'); press('frame-desktop',false); press('frame-phone',true); };
+  function theme(t){ root.setAttribute('data-theme', t); press('theme-light', t==='light'); press('theme-dark', t==='dark'); }
+  document.getElementById('theme-light').onclick=function(){ theme('light'); };
+  document.getElementById('theme-dark').onclick=function(){ theme('dark'); };
+  var cur=root.getAttribute('data-theme'); if(cur==='dark'||cur==='light'){ press('theme-light',cur==='light'); press('theme-dark',cur==='dark'); }
+  else if(window.matchMedia && matchMedia('(prefers-color-scheme: dark)').matches){ press('theme-light',false); press('theme-dark',true); }
+
+  // year scrubber: static demo values for the hectares headline
+  var ha={2020:142,2021:205,2022:432,2023:627,2024:714,2025:763,2026:763};
+  document.querySelectorAll('.scrub button').forEach(function(b){ b.addEventListener('click', function(){
+    document.querySelectorAll('.scrub button').forEach(function(x){ x.setAttribute('aria-pressed','false'); }); b.setAttribute('aria-pressed','true');
+    var y=b.dataset.year; document.getElementById('ha-kpi').textContent=ha[y]; document.getElementById('ha-title').textContent=(ha[y]*1000).toLocaleString('en-GB');
+  }); });
+
+  // sparklines
+  document.querySelectorAll('svg[data-spark]').forEach(function(s){
+    var d=s.dataset.spark.split(',').map(Number), max=Math.max.apply(null,d), min=0, n=d.length;
+    var pts=d.map(function(v,i){ return [(i/(n-1))*100, 26-((v-min)/(max-min||1))*22]; });
+    var path=pts.map(function(p,i){ return (i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1); }).join('');
+    var c=s.dataset.color||'var(--brand)';
+    s.innerHTML='<path d="'+path+' L100 28 L0 28 Z" fill="'+c+'" opacity=".12"/><path d="'+path+'" fill="none" stroke="'+c+'" stroke-width="2" stroke-linejoin="round" vector-effect="non-scaling-stroke"/><circle cx="'+pts[n-2][0].toFixed(1)+'" cy="'+pts[n-2][1].toFixed(1)+'" r="2.8" fill="'+c+'"/>';
+  });
+
+  // line charts with optional band, second line and target
+  document.querySelectorAll('svg.chart').forEach(function(s){
+    var vb=s.getAttribute('viewBox').split(' ').map(Number), W=vb[2], H=vb[3], L=44, R=14, T=14, B=26;
+    var line=s.dataset.line.split(',').map(Number), max=Number(s.dataset.max), n=line.length, years=[2020,2021,2022,2023,2024,2025,2026];
+    var x=function(i){ return L+(i/(n-1))*(W-L-R); }, y=function(v){ return T+(1-v/max)*(H-T-B); };
+    var c=s.dataset.color||'var(--brand)', out='';
+    for(var g=0; g<=4; g++){ var v=max*g/4, yy=y(v); out+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+yy+'" y2="'+yy+'" stroke="var(--hair)" stroke-width="1"/><text x="'+(L-6)+'" y="'+(yy+4)+'" text-anchor="end" font-size="10" fill="var(--ink-3)" font-family="Instrument Sans, sans-serif">'+(v>=1000?(v/1000).toFixed(v%1000?1:0)+'k':(+v.toFixed(1)))+'</text>'; }
+    years.forEach(function(yr,i){ out+='<text x="'+x(i)+'" y="'+(H-8)+'" text-anchor="middle" font-size="10" fill="var(--ink-3)" font-family="Instrument Sans, sans-serif">'+yr+'</text>'; });
+    if(s.dataset.low){ var lo=s.dataset.low.split(',').map(Number), hi=s.dataset.high.split(',').map(Number);
+      var poly=hi.map(function(v,i){ return x(i)+','+y(v); }).concat(lo.map(function(v,i){ return x(i)+','+y(v); }).reverse()).join(' ');
+      out+='<polygon points="'+poly+'" fill="'+c+'" opacity=".14"/>'; }
+    if(s.dataset.target){ var ty=y(Number(s.dataset.target)); if(ty>T){ out+='<line x1="'+L+'" x2="'+(W-R)+'" y1="'+ty+'" y2="'+ty+'" stroke="var(--ink)" stroke-dasharray="4 4"/><text x="'+(L+4)+'" y="'+(ty-4)+'" font-size="10" fill="var(--ink)" font-family="Instrument Sans, sans-serif">target</text>'; } else { out+='<text x="'+(W-R)+'" y="'+(T+10)+'" text-anchor="end" font-size="10" fill="var(--ink-3)" font-family="Instrument Sans, sans-serif">target '+(Number(s.dataset.target)>=1000?(Number(s.dataset.target)/1000)+'k':s.dataset.target)+' ↑</text>'; } }
+    var p=line.map(function(v,i){ return (i?'L':'M')+x(i)+' '+y(v); }).join('');
+    out+='<path d="'+p+'" fill="none" stroke="'+c+'" stroke-width="2.2" stroke-linejoin="round"/>';
+    line.forEach(function(v,i){ out+='<circle cx="'+x(i)+'" cy="'+y(v)+'" r="3.2" fill="'+c+'" stroke="var(--surface)" stroke-width="1.5"/>'; });
+    if(s.dataset.line2){ var l2=s.dataset.line2.split(',').map(Number); out+='<path d="'+l2.map(function(v,i){ return (i?'L':'M')+x(i)+' '+y(v); }).join('')+'" fill="none" stroke="var(--ink)" stroke-width="2"/>'; }
+    out+='<line x1="'+x(5)+'" x2="'+x(5)+'" y1="'+T+'" y2="'+(H-B)+'" stroke="var(--ink-3)" stroke-width="1"/>';
+    out+='<text x="'+(x(5)+4)+'" y="'+(y(line[5])-8)+'" font-size="11" font-weight="600" fill="var(--ink)" font-family="Instrument Sans, sans-serif">'+(line[5]>=1000?(line[5]/1000).toFixed(1)+'k':line[5])+(s.dataset.unit?' '+s.dataset.unit:'')+'</text>';
+    s.innerHTML=out;
+  });
+
+  // ledger toggle on the climate view
+  document.querySelectorAll('#ledgers .ledger').forEach(function(b){ b.addEventListener('click', function(){
+    document.querySelectorAll('#ledgers .ledger').forEach(function(x){ x.classList.remove('on'); x.setAttribute('aria-pressed','false'); }); b.classList.add('on'); b.setAttribute('aria-pressed','true');
+    var inv=b.dataset.ledger==='inventory', vals=document.querySelectorAll('#arch .val'), bars=document.querySelectorAll('#arch .b'), maxv=inv?6.8:5.3;
+    vals.forEach(function(v,i){ var n=Number(inv?v.dataset.inv:v.dataset.int); v.textContent=n; bars[i].style.width=Math.max(0.5,(n/maxv)*69)+'%'; });
+    document.getElementById('arch-sub').textContent=(inv?'Inventory ledger · removals':'Intervention ledger')+' · expected, Mt CO₂e · bar inside = p5–p95';
+  }); });
+
+  // sensitivity: simple linear model of the published per-unit values
+  var base={regen:7.07,peren:4.7,agro:1.67,cookBase:0.559,fnrb0:0.42,rot0:10,buf0:0.20,leakCook:0.95};
+  function sens(){
+    var f=Number(document.getElementById('s-fnrb').value), r=Number(document.getElementById('s-rot').value), bf=Number(document.getElementById('s-buf').value)/100;
+    document.getElementById('s-fnrb-v').textContent=f.toFixed(2); document.getElementById('s-rot-v').textContent=r; document.getElementById('s-buf-v').textContent=Math.round(bf*100);
+    var cook=base.cookBase*((f*1.747+0.143)/(base.fnrb0*1.747+0.143));
+    var harvInv=base.agro*(r/base.rot0); var removalsInv=base.regen+base.peren+harvInv;
+    var regenInt=base.regen*(1-(bf+0.05)); var perenInt=base.peren*(1-bf); var harvInt=harvInv*(1-bf);
+    var total=regenInt+perenInt+harvInt+cook;
+    document.getElementById('s-out').textContent=total.toFixed(1); document.getElementById('s-cook').textContent=cook.toFixed(2); document.getElementById('s-harv').textContent=harvInt.toFixed(1); document.getElementById('s-bufc').textContent=removalsInv.toFixed(1);
+  }
+  ['s-fnrb','s-rot','s-buf'].forEach(function(id){ document.getElementById(id).addEventListener('input', sens); }); sens();
+
+  // briefing
+  var slides=document.querySelectorAll('#brief .slide'), dots=document.querySelectorAll('#brief .dotsn i'), k=0;
+  function go(i){ k=(i+slides.length)%slides.length; slides.forEach(function(s,j){ s.classList.toggle('on',j===k); }); dots.forEach(function(d,j){ d.classList.toggle('on',j===k); }); }
+  document.getElementById('b-prev').onclick=function(){ go(k-1); }; document.getElementById('b-next').onclick=function(){ go(k+1); };
+  document.getElementById('brief').addEventListener('keydown', function(e){ if(e.key==='ArrowRight') go(k+1); else if(e.key==='ArrowLeft') go(k-1); else if(e.key==='Escape') location.hash='overview'; });
+})();
+</script>
