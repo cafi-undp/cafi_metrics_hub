@@ -137,9 +137,6 @@ export function outcomeAchievement(aggs: IndicatorAgg[]): number | null {
   return vals.length ? vals.reduce((s, v) => s + v, 0) / vals.length : null;
 }
 
-/** Hectares that are planted, restored or protected (excludes "land covered by plans", which overlaps). */
-export const AREA_INDICATORS = ["01", "02", "03", "04", "09", "13", "14"];
-
 export function sumUnit(aggs: IndicatorAgg[], unit: Unit, codes?: string[]): number {
   return aggs
     .filter((a) => a.indicator.unit === unit && (!codes || codes.includes(a.indicator.code)))

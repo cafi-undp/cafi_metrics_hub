@@ -22,14 +22,24 @@ export function pct(v: number | null | undefined, digits = 0): string {
 }
 
 export function unitLabel(u: Unit, lang: string): string {
-  if (u === "ha") return "ha";
-  if (u === "km") return "km";
-  return lang === "fr" ? "nombre" : "count";
+  const fr = lang === "fr";
+  switch (u) {
+    case "ha": return "ha";
+    case "km": return "km";
+    case "t": return "t";
+    case "usd": return "USD";
+    case "tco2e": return "tCO₂e";
+    case "people": return fr ? "pers." : "people";
+    case "pct": return "%";
+    default: return "";
+  }
 }
 
 export function withUnit(v: number | null | undefined, u: Unit, lang: string, compactForm = false): string {
+  if (u === "usd") return v === null || v === undefined ? "–" : `$${compact(v)}`;
   const n = compactForm ? compact(v) : num(v);
-  return u === "count" ? n : `${n} ${unitLabel(u, lang)}`;
+  const label = unitLabel(u, lang);
+  return label ? `${n} ${label}` : n;
 }
 
 export function tco2(v: number | null | undefined): string {

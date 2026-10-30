@@ -1,20 +1,42 @@
 // Shape of public/data/metrics.json and quality.json (written by pipeline/build.py).
 
-export type Unit = "ha" | "count" | "km";
+export type Unit = "ha" | "count" | "km" | "people" | "usd" | "t" | "pct" | "ratio" | "score" | "tco2e";
 
+/** A standard-indicator category (= Metrics Hub outcome), e.g. FOR. */
 export interface Outcome {
   id: string;
-  name: string;
+  name: string; // short name
   nameFr: string;
+  full: string;
+  no: number | null;
+  scope: string;
+  status: string;
+  slot: number | null; // palette slot 1–8, null = neutral
+}
+
+export interface Subcategory {
+  code: string;
+  category: string;
+  name: string;
 }
 
 export interface Indicator {
-  code: string;
+  code: string; // standard code, e.g. GOV-03
   name: string;
   nameFr: string;
-  outcome: string;
+  description: string;
+  outcome: string; // category code
+  subcategory: string;
+  tier: string; // T1 | T2 | T3
   unit: Unit;
+  unitLabel: string;
+  unitGroup: string;
+  measurement: string;
+  aggregation: string;
+  summable: boolean;
+  tags: string[];
   hasCo2: boolean;
+  reported: boolean;
 }
 
 export interface Country {
@@ -36,6 +58,27 @@ export interface Programme {
   partners: string[];
   start: number | null;
   end: number | null;
+  mptf: number[];
+}
+
+/** A project from the MPTF list (CAFI / FONAREDD trust funds). */
+export interface Project {
+  id: number;
+  name: string;
+  fund: string;
+  type: string | null;
+  status: string | null;
+  country: string;
+  countryLabel: string;
+  orgs: string[];
+  approved: number;
+  transferred: number;
+  refunds: number;
+  expenditure: number;
+  start: string | null;
+  end: string | null;
+  programmes: string[];
+  passThrough: string | null; // set for fund-to-fund transfers, left out of totals
 }
 
 export interface Co2Series {
@@ -52,6 +95,8 @@ export interface DataRecord {
   programme: string;
   partner: string;
   indicator: string;
+  source: string; // indicator text as written in the workbook
+  type: string | null; // e.g. "Buildings" when several old indicators feed one code
   label: string;
   target: number | null;
   values: (number | null)[];
@@ -82,13 +127,16 @@ export interface Metrics {
     defaultYear: number;
     partialYears: number[];
     recordCount: number;
+    areaIndicators: string[];
   };
   outcomes: Outcome[];
+  subcategories: Subcategory[];
   indicators: Indicator[];
   countries: Country[];
   partners: Partner[];
   programmes: Programme[];
   records: DataRecord[];
+  projects: Project[];
   co2Factors: Co2Factor[];
   headline: { beneficiaries: HeadlineFigure; anticipatedCo2: HeadlineFigure };
 }

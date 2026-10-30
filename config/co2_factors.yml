@@ -16,6 +16,8 @@
 #                (benefit already accrued up to the selected year)
 #   target     = final target × rate × horizon
 #
+# Keys are standard indicator codes (config/reference workbook, CARBON tag).
+#
 # Changes vs. the Power BI report (please confirm with the M&E team):
 #   * Targets now use the same horizon as results. Power BI used 4 years
 #     (01), 9 years (02/03) and 5 years (05) for targets but 10 years for
@@ -27,7 +29,7 @@
 #     Power BI put them under "absorbed".
 
 factors:
-  "01":
+  AGR-01:   # subsistence / improved food crops (old 01)
     - component: absorbed
       rate: 2.9336          # 0.8 × 3.667
       horizon: 10
@@ -36,7 +38,7 @@ factors:
       rate: 1.4668          # 0.8 × 3.667 × 0.5
       horizon: 10
       formula: "0.8 tC/ha/yr × 3.667 × 50 % of area"
-  "02":
+  AGR-02:   # perennial crops (old 02)
     - component: absorbed
       rate: 23.13877        # (5.09 + 1.22) × 3.667
       horizon: 10
@@ -45,7 +47,7 @@ factors:
       rate: 11.569385       # (5.09 + 1.22) × 3.667 × 0.5
       horizon: 10
       formula: "(5.09 + 1.22) tC/ha/yr × 3.667 × 50 % of area"
-  "03":
+  AGR-03:   # agroforestry (old 03)
     - component: absorbed
       rate: 23.13877
       horizon: 10
@@ -54,7 +56,16 @@ factors:
       rate: 11.569385
       horizon: 10
       formula: "(5.09 + 1.22) tC/ha/yr × 3.667 × 50 % of area"
-  "04":
+  FOR-02:   # tree plantations / reforestation (same coefficients as old 02/03)
+    - component: absorbed
+      rate: 23.13877
+      horizon: 10
+      formula: "(5.09 + 1.22) tC/ha/yr (above + below ground) × 3.667"
+    - component: avoided
+      rate: 11.569385
+      horizon: 10
+      formula: "(5.09 + 1.22) tC/ha/yr × 3.667 × 50 % of area"
+  FOR-01:   # natural regeneration of savannah (old 04)
     - component: absorbed
       rate: 2.4477225       # (0.62 + 19 × 0.25 %) × 3.667
       horizon: 15
@@ -63,12 +74,12 @@ factors:
       rate: 0.0122386125    # (0.62 + 19 × 0.25 %) × 3.667 × 0.5 %
       horizon: 15
       formula: "(0.62 + 19 × 0.25 %) tC/ha/yr × 3.667 × 0.5 % of area"
-  "05":
+  ENR-01:   # clean cooking solutions (old 05)
     - component: avoided
       rate: 3.65701875      # 5.5 × 2.533 × 0.75 × 0.35
       horizon: 10
       formula: "5.5 t fuelwood/stove/yr × 2.533 tCO2/t × 75 % use × 35 % savings"
-  "13":
+  FOR-04:   # forest conservation (old 13)
     - component: avoided
       rate: 1.25            # 0.25 % × 500
       horizon: 15

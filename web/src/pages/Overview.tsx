@@ -3,7 +3,7 @@ import { useApp } from "../lib/state";
 import { useFiltered } from "../lib/hooks";
 import { nameOf, t } from "../lib/i18n";
 import {
-  activeIn, AREA_INDICATORS, byKey, co2Aggregate, indicatorAggs, outcomeAchievement, sumUnit, valueAt,
+  activeIn, byKey, co2Aggregate, indicatorAggs, outcomeAchievement, sumUnit, valueAt,
 } from "../lib/model";
 import { compact, num, pct, signed, tco2, withUnit } from "../lib/format";
 import { outcomeHex, outcomeVar, textOn } from "../lib/colors";
@@ -24,8 +24,8 @@ export function Overview() {
   const aggs = useMemo(() => indicatorAggs(ix, records, yi), [ix, records, yi]);
   const prevAggs = useMemo(() => indicatorAggs(ix, records, Math.max(0, yi - 1)), [ix, records, yi]);
   const co2 = useMemo(() => co2Aggregate(records, yi), [records, yi]);
-  const hectares = sumUnit(aggs, "ha", AREA_INDICATORS);
-  const hectaresPrev = yi > 0 ? sumUnit(prevAggs, "ha", AREA_INDICATORS) : 0;
+  const hectares = sumUnit(aggs, "ha", m.meta.areaIndicators);
+  const hectaresPrev = yi > 0 ? sumUnit(prevAggs, "ha", m.meta.areaIndicators) : 0;
   const progIds = new Set(records.map((r) => r.programme));
   const active = [...progIds].filter((id) => activeIn(ix.programmes.get(id)!, year)).length;
   const partners = new Set(records.map((r) => r.partner)).size;
@@ -45,7 +45,7 @@ export function Overview() {
   // Map data per country
   const mapData: MapDatum[] = m.countries.filter((c) => c.iso).map((c) => {
     const rc = records.filter((r) => ix.countryOf(r) === c.id);
-    const ha = rc.filter((r) => AREA_INDICATORS.includes(r.indicator)).reduce((s, r) => s + (valueAt(r.values, yi) ?? 0), 0);
+    const ha = rc.filter((r) => m.meta.areaIndicators.includes(r.indicator)).reduce((s, r) => s + (valueAt(r.values, yi) ?? 0), 0);
     const progs = new Set(rc.map((r) => r.programme)).size;
     const c2 = co2Aggregate(rc, yi).committed;
     const value = mapMetric === "ha" ? ha : mapMetric === "programmes" ? progs : c2;
@@ -114,6 +114,11 @@ export function Overview() {
             <h2 id="outcomes-h">{t("Progress by outcome")}</h2>
             <p className="muted small">{t("Average achievement of each outcome's indicators against final targets")}</p>
           </div>
+          {m.outcomes.length > outcomes.length && (
+            <Link to={{ page: "methodology" }} className="small">
+              {m.outcomes.length - outcomes.length} {t("categories without reported results yet")} →
+            </Link>
+          )}
         </div>
         <div className="grid g-3">
           {outcomes.map(({ o, aggs: oa, achievement, trend }) => (
@@ -182,7 +187,7 @@ export function Overview() {
 function TopProgrammes({ records, yi }: { records: DataRecord[]; yi: number }) {
   const { m, ix, navigate } = useApp();
   const rows = useMemo(() => {
-    const g = byKey(records.filter((r) => AREA_INDICATORS.includes(r.indicator)), (r) => r.programme);
+    const g = byKey(records.filter((r) => m.meta.areaIndicators.includes(r.indicator)), (r) => r.programme);
     return [...g.entries()].map(([id, rs]) => {
       const byOutcome = new Map<string, number>();
       rs.forEach((r) => byOutcome.set(ix.outcomeOf(r), (byOutcome.get(ix.outcomeOf(r)) ?? 0) + (valueAt(r.values, yi) ?? 0)));
@@ -258,7 +263,7 @@ function HectaresOverTime({ records }: { records: DataRecord[] }) {
   const { m, ix, filters } = useApp();
   const years = m.meta.years;
   const series = m.outcomes.map((o) => {
-    const rs = records.filter((r) => AREA_INDICATORS.includes(r.indicator) && ix.outcomeOf(r) === o.id);
+    const rs = records.filter((r) => m.meta.areaIndicators.includes(r.indicator) && ix.outcomeOf(r) === o.id);
     return { o, values: years.map((_, i) => rs.reduce((s, r) => s + (valueAt(r.values, i) ?? 0), 0)) };
   }).filter((s) => s.values.some((v) => v > 0));
   const partial = m.meta.partialYears;
@@ -319,7 +324,7 @@ function HectaresOverTime({ records }: { records: DataRecord[] }) {
 function HectareTreemap({ records, yi }: { records: DataRecord[]; yi: number }) {
   const { m, ix, navigate } = useApp();
   const tree = useMemo(() => m.outcomes.map((o) => {
-    const inds = m.indicators.filter((i) => i.outcome === o.id && AREA_INDICATORS.includes(i.code)).map((i) => {
+    const inds = m.indicators.filter((i) => i.outcome === o.id && m.meta.areaIndicators.includes(i.code)).map((i) => {
       const g = byKey(records.filter((r) => r.indicator === i.code), (r) => r.programme);
       const children = [...g.entries()].map(([pid, rs]) => ({
         name: ix.programmes.get(pid)!.name, id: `${i.code}|${pid}`,

@@ -23,7 +23,7 @@ export interface Tokens {
   axis: string;
   border: string;
   accent: string;
-  series: string[]; // s1..s6
+  series: string[]; // s1..s8
   map: string[]; // map-0..map-5
   good: string;
   warning: string;
@@ -39,7 +39,7 @@ export function readTokens(): Tokens {
   return {
     surface: v("--surface"), surface2: v("--surface-2"), ink: v("--ink"), ink2: v("--ink-2"), muted: v("--muted"),
     grid: v("--grid"), axis: v("--axis"), border: v("--border-strong"), accent: v("--accent"),
-    series: [1, 2, 3, 4, 5, 6].map((i) => v(`--s${i}`)),
+    series: [1, 2, 3, 4, 5, 6, 7, 8].map((i) => v(`--s${i}`)),
     map: [0, 1, 2, 3, 4, 5].map((i) => v(`--map-${i}`)),
     good: v("--good"), warning: v("--warning"), serious: v("--serious"), critical: v("--critical"), neutral: v("--neutral"),
     font: v("--font"),

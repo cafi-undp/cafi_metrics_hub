@@ -1,0 +1,8 @@
+# MPTF project list settings.
+#
+# pass_through: MPTF "projects" that only move money from one trust fund to the
+# other. The money is then spent through the receiving fund's own projects,
+# which are in the list too, so counting both would double it. They stay in the
+# project table (marked) but are left out of totals and charts.
+pass_through:
+  103702: Transfer from CAFI to the DRC National REDD+ Fund (FONAREDD); spent through the FONAREDD projects listed separately.

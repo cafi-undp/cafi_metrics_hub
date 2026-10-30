@@ -5,9 +5,10 @@ Africa, rebuilt from the Power BI report as code: version-controlled, tested, an
 republished automatically.
 
 ```
-data/ProjectData.xlsx ──► pipeline (Python) ──► metrics.json + quality.json ──► dashboard (React + ECharts) ──► GitHub Pages
-        ▲                   validate · clean · CO₂                                  static site, no server
-   SharePoint (optional, daily)
+data/ProjectData.xlsx ───────┐
+data/MPTF_Projects.xlsx ─────┼─► pipeline (Python) ──► metrics.json + quality.json ──► dashboard (React + ECharts) ──► GitHub Pages
+config/reference/            │   validate · re-code to standard     static site, no server
+  CAFI_Standard_Indicators ──┘   indicators · CO₂ · link projects
 ```
 
 ## What's in the dashboard
@@ -15,11 +16,12 @@ data/ProjectData.xlsx ──► pipeline (Python) ──► metrics.json + quali
 | Page | What it shows |
 |---|---|
 | **Overview** | Committed CO₂ against the portfolio target, headline tiles, progress per outcome, a map of Central Africa (hectares / programmes / CO₂ — click a country to filter), top programmes, hectares over time, and a treemap of where the hectares are |
-| **Outcomes** | Each indicator with result, target, achievement and year-on-year change; trajectory charts against target; programme ranking; every sub-indicator row with a status |
-| **Programmes** | Timeline of all programme periods; cards or table with average achievement, sparkline and on-track status; a detail page per programme |
+| **Outcomes** | One tab per standard category (GOV, FOR, FIN, LUT, AGR, ENR, CLM, INC, PPL). Each reported indicator with its standard code, tier, result, target, achievement and year-on-year change; trajectory charts; programme ranking; every sub-indicator row with a status; the category's full list of standard indicators, reported or not |
+| **Programmes** | Timeline of all programme periods; cards or table with average achievement, sparkline and on-track status; a detail page per programme, with its MPTF funding (budget, transfers, spending, status) |
+| **Portfolio** | All CAFI and FONAREDD projects from the MPTF list: approved budget, transfers, spending, status, by country and start year, and which ones report results |
 | **Climate impact** | Absorbed vs avoided emissions by indicator, realised vs committed over time, CO₂ by country, and the emission factors used |
 | **Data quality** | Every check run on the workbook, with the Excel row numbers to fix |
-| **Methodology** | How every number is calculated, plus the indicator catalogue |
+| **Methodology** | How every number is calculated, plus the 67 standard indicators (filter by tier or reported) |
 
 Everywhere:
 - **Filters:** year, with a ▶ button that plays through the years; country, partner and programme. Filters are kept in the URL, so any view can be shared as a link.
@@ -28,6 +30,10 @@ Everywhere:
 - **Display:** English / French, light / dark theme, works on mobile, keyboard-accessible, colour-blind-safe colours.
 
 ## Updating the data
+
+The project list lives in `data/MPTF_Projects.xlsx` (the MPTF Gateway export, any extra title rows are fine). Replace it the same way.
+
+New results rows can use the standard codes directly (`GOV-03 Operational local governance structures`); rows with the old numbering are re-coded automatically.
 
 **Option 1: commit the workbook.** Replace `data/ProjectData.xlsx` and push to `main` (or open a pull request). CI validates it, and the site republishes in about 2 minutes.
 
@@ -68,7 +74,10 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 
 | File | Controls |
 |---|---|
-| `config/indicators.yml` | Indicator names (EN/FR), outcome, unit; outcome order (= chart colour); countries |
+| `config/reference/CAFI_Standard_Indicators_MetricsHub.xlsx` | The standard indicator catalogue: categories, sub-categories, 67 indicators with EN/FR names, tier, unit, aggregation rule, tags. Replace the file to update the site |
+| `config/indicators.yml` | How old indicator numbers (01–14) in ProjectData.xlsx map to standard codes, sub-indicator overrides, category colours and French names, the hectare headline, countries |
+| `config/programmes.yml` | Which MPTF project id(s) each results programme belongs to (lines marked `check` need confirming) |
+| `config/portfolio.yml` | Fund-to-fund transfers left out of portfolio totals |
 | `config/co2_factors.yml` | tCO₂e per unit per year and horizon for each indicator, with the derivation shown on the site |
 | `config/headline.yml` | Figures not in the workbook (beneficiaries, anticipated portfolio CO₂) |
 
@@ -88,8 +97,8 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 ### Changes from the Power BI report — please confirm
 
 1. CO₂ targets now use the same horizon as CO₂ results. Power BI used 4, 9 or 5 years for targets but 10 for results.
-2. Forest conservation (13) now counts towards CO₂. Power BI had no results formula for it, so it always showed 0.
-3. Clean cooking (05) and forest conservation (13) are counted as *avoided* emissions, not *absorbed*.
+2. Forest conservation (FOR-04, old 13) now counts towards CO₂. Power BI had no results formula for it, so it always showed 0.
+3. Clean cooking (ENR-01) and forest conservation (FOR-04) are counted as *avoided* emissions, not *absorbed*.
 4. Beneficiaries and anticipated CO₂ are still constants, now in `config/headline.yml`. They need a source.
 
 ## Running locally
