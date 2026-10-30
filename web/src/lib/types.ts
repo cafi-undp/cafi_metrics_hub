@@ -105,12 +105,51 @@ export interface Activity {
   indicators: string[];
 }
 
-export interface Co2Series {
-  absorbed: (number | null)[];
-  avoided: (number | null)[];
-  realised: (number | null)[];
-  targetAbsorbed: number;
-  targetAvoided: number;
+export type Ledger = "inventory" | "intervention" | "indicative" | "potential";
+
+export interface LedgerSeries {
+  realised: (number | null)[]; // cumulative tCO2e delivered by the cohorts alive, as of each year
+  expected: (number | null)[]; // stock as of each year × per-unit full-cycle value (ex ante)
+}
+
+/** Carbon results of one record, method 2.0 (docs/carbon-methodology.md). */
+export interface Carbon {
+  archetype: "arr" | "redd" | "alm" | "cooking";
+  ledger: "inventory" | "intervention" | "indicative";
+  stratum: string; // country/zone/soil
+  inventory: LedgerSeries & { emissions: (number | null)[] };
+  intervention: LedgerSeries;
+  indicative: LedgerSeries | null; // soil carbon without sampling
+  potential: LedgerSeries | null; // displaced fuelwood, ex post only
+  target: { inventory: number; intervention: number };
+  perUnit: Record<Ledger, number>;
+  band: Record<Ledger, [number, number]>; // p5 / mean, p95 / mean
+  tier: number;
+  defaults: string[]; // factor ids still on a default that a monitored indicator will replace
+}
+
+export interface CarbonFactor {
+  id: string;
+  unit: string;
+  tier: number;
+  source: string;
+  note: string;
+  confirm: boolean;
+  monitoredBy: string | null;
+  dist: string;
+  value?: number;
+  values?: Record<string, number>;
+  by?: string;
+}
+
+export interface CarbonMeta {
+  method: string;
+  gwp: { source: string; ch4: number; n2o: number };
+  factors: CarbonFactor[];
+  archetypes: Record<string, { module: string; label: string; system?: string; reference?: string; ledger?: string; fuelwood?: boolean }>;
+  strata: Record<string, { country: string; zone: string; soil: string }>;
+  claims: { project: number; status: string; note?: string; confirm?: boolean }[];
+  draws: number;
 }
 
 export interface DataRecord {
@@ -124,15 +163,7 @@ export interface DataRecord {
   label: string;
   target: number | null;
   values: (number | null)[];
-  co2: Co2Series | null;
-}
-
-export interface Co2Factor {
-  indicator: string;
-  component: "absorbed" | "avoided";
-  rate: number;
-  horizon: number;
-  formula: string;
+  co2: Carbon | null;
 }
 
 export interface HeadlineFigure {
@@ -162,7 +193,7 @@ export interface Metrics {
   records: DataRecord[];
   projects: Project[];
   activities: Activity[];
-  co2Factors: Co2Factor[];
+  carbon: CarbonMeta;
   headline: { beneficiaries: HeadlineFigure; anticipatedCo2: HeadlineFigure };
 }
 

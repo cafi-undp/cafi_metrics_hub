@@ -1,0 +1,266 @@
+# Carbon factor library — method version 2.0
+#
+# One entry per parameter. Each has a central value, a distribution for the
+# Monte Carlo bands, a tier (1 = IPCC/CDM default, 2 = national data,
+# 3 = measured), the applicability key when the value depends on context
+# (by_country, by_zone, by_soil) and the source with table number.
+#
+#   dist: {type: fixed} | {type: normal, sd: x} | {type: normal, rel95: f}
+#         | {type: triangular, low: a, high: b}
+#   rel95 = half-width of the 95 % interval as a fraction of the value (IPCC style).
+#
+# "confirm: true" marks assumptions the programme team should confirm;
+# "monitored_by" names the indicator whose reported value replaces the default.
+# Never edit a value in place for a published build: bump `version` and keep
+# the old file in git, so any past result can be reproduced.
+
+version: "2.0"
+
+gwp:
+  source: "IPCC AR6 WG1 Table 7.15, GWP100"
+  ch4: 27.0        # biogenic methane
+  n2o: 273
+
+factors:
+  # ── Biomass conversions ────────────────────────────────────────────────
+  cf:
+    value: 0.47
+    unit: "tC per t dry matter"
+    dist: {type: normal, rel95: 0.03}
+    tier: 1
+    source: "IPCC 2006 Vol. 4 Table 4.3 (tropical, whole tree)"
+  root_shoot:
+    by_zone:
+      rainforest: {value: 0.37, dist: {type: normal, rel95: 0.9}}
+      moist:      {value: 0.232, dist: {type: normal, rel95: 0.9}}
+    unit: "t root per t shoot"
+    tier: 1
+    source: "IPCC 2006 Table 4.4 (tropical rainforest); IPCC 2019 Table 4.4 (Africa, tropical moist deciduous)"
+
+  # ── Growth rates ───────────────────────────────────────────────────────
+  g_anr:
+    value: 2.9
+    unit: "t d.m./ha/yr above ground"
+    dist: {type: normal, sd: 1.0}
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 4.9, Africa, tropical moist deciduous, secondary forest ≤ 20 years"
+    note: "Assisted natural regeneration of savanna (FOR-01). The rainforest-zone rate (7.6) describes forest regrowth after clearing, not savanna succession, so the mosaic-zone rate is used in every zone."
+  g_plantation:
+    by_zone:
+      moist:      {value: 9, dist: {type: triangular, low: 3, high: 15}}
+      rainforest: {value: 6, dist: {type: triangular, low: 5, high: 8}}
+    unit: "t d.m./ha/yr above ground"
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 4.10, Africa, other broadleaf plantations ≤ 20 years"
+    note: "Tree plantations (FOR-02)"
+  g_alley:
+    value: 3.34
+    unit: "tC/ha/yr above + below ground"
+    dist: {type: normal, rel95: 0.22}
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 5.2 (Cardinael et al. 2018), Africa tropical moist, alley cropping 2.75 + 0.59"
+    note: "Agroforestry (AGR-03)"
+  g_shaded_perennial:
+    value: 2.26
+    unit: "tC/ha/yr above + below ground"
+    dist: {type: normal, rel95: 0.34}
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 5.2, Africa tropical moist, shaded perennial 1.82 + 0.44"
+    note: "Deforestation-free perennial crops (AGR-02)"
+
+  # ── Stock caps and periods ─────────────────────────────────────────────
+  maturity_perennial:
+    value: 20
+    unit: years
+    dist: {type: normal, rel95: 0.5}
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 5.1, harvest/maturity cycle of perennial systems"
+  rotation_woodenergy:
+    value: 10
+    unit: years
+    dist: {type: triangular, low: 8, high: 12}
+    tier: 2
+    source: "Acacia wood-energy systems of the Bateke plateau (Mampu, Ibi); confirm per programme"
+    confirm: true
+  horizon:
+    value: 20
+    unit: years
+    dist: {type: fixed}
+    tier: 1
+    source: "IPCC default transition period; crediting horizon for ex-ante figures"
+  cmax_anr_gain:
+    value: 87.7
+    unit: tC/ha
+    dist: {type: normal, rel95: 0.3}
+    tier: 2
+    source: "DRC FREL 2018 Table 7-3: secondary forest 111.5 minus savanna 23.8 tC/ha (total biomass)"
+
+  # ── Permanence and leakage ─────────────────────────────────────────────
+  buffer_arr:
+    value: 0.20
+    unit: fraction
+    dist: {type: fixed}
+    tier: 1
+    source: "VCS AFOLU Non-Permanence Risk Tool v4.2 logic, ex-ante default for planted systems"
+  buffer_arr_fire:
+    value: 0.25
+    unit: fraction
+    dist: {type: fixed}
+    tier: 1
+    source: "VCS AFOLU Non-Permanence Risk Tool v4.2 logic, fire-exclusion regeneration on savanna"
+  buffer_redd:
+    value: 0.20
+    unit: fraction
+    dist: {type: fixed}
+    tier: 1
+    source: "VCS AFOLU Non-Permanence Risk Tool v4.2 logic, ex-ante default"
+  leakage_arr:
+    value: 0.0
+    unit: fraction
+    dist: {type: fixed}
+    tier: 1
+    source: "VM0047 v1.1: no activity-shifting leakage when the land was degraded or unused"
+  leakage_redd:
+    value: 0.20
+    unit: fraction
+    dist: {type: fixed}
+    tier: 1
+    source: "VM0048 activity-shifting default pending leakage-belt monitoring"
+  leakage_cooking:
+    value: 0.05
+    unit: fraction
+    dist: {type: fixed}
+    tier: 1
+    source: "TPDDTEC v4 / AMS-II.G adjustment factor 0.95"
+  leakage_fuelwood:
+    value: 0.05
+    unit: fraction
+    dist: {type: fixed}
+    tier: 1
+    source: "Renewable-biomass supply (AMS-I.E logic) leakage adjustment"
+
+  # ── Avoided deforestation ──────────────────────────────────────────────
+  defor_rate:
+    by_country:
+      DRC:     {value: 0.007, dist: {type: triangular, low: 0.003, high: 0.011}}
+      default: {value: 0.005, dist: {type: triangular, low: 0.002, high: 0.008}}
+    unit: "fraction of forest per year"
+    tier: 2
+    source: "DRC FREL 2010–2014 national activity data (≈1.1 %/yr) scaled by the 36 % lower 2015–2018 emissions reported in the UNFCCC technical annex; other countries: placeholder until their FREL activity data are loaded"
+    confirm: true
+    monitored_by: CLM-02
+  ef_deforestation:
+    by_country:
+      DRC:     {value: 466, dist: {type: normal, rel95: 0.2}}
+      default: {value: 466, dist: {type: normal, rel95: 0.3}}
+    unit: tCO2e/ha
+    tier: 2
+    source: "DRC FREL 2018 Table 7-3 biomass by stratum net of post-conversion stock (dense terra firme 690, secondary 352, dry/open 158), weighted by 2010–2014 activity data"
+  effectiveness_default:
+    value: 0.41
+    unit: fraction
+    dist: {type: normal, rel95: 0.5}
+    tier: 1
+    source: "Wolf et al. 2021, Nature Ecol. Evol. 5:520–529: protected areas 41 % lower forest loss than matched controls"
+    monitored_by: CLM-02
+
+  # ── Soil carbon (indicative) ───────────────────────────────────────────
+  soc_ref:
+    by_soil:
+      lac:   {value: 38, dist: {type: normal, rel95: 0.05}}
+      sandy: {value: 27, dist: {type: normal, rel95: 0.12}}
+    unit: "tC/ha (0–30 cm)"
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 2.3, tropical moist"
+  f_lu_cultivated:
+    value: 0.83
+    unit: factor
+    dist: {type: normal, rel95: 0.11}
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 5.5, long-term cultivated, tropical moist/wet"
+  f_i_high:
+    value: 1.11
+    unit: factor
+    dist: {type: normal, rel95: 0.10}
+    tier: 1
+    source: "IPCC 2019 Vol. 4 Table 5.5, high input without manure, tropical moist/wet"
+  soc_period:
+    value: 20
+    unit: years
+    dist: {type: fixed}
+    tier: 1
+    source: "IPCC default transition period for soil stock changes"
+
+  # ── Cooking ────────────────────────────────────────────────────────────
+  wood_per_capita:
+    value: 0.5
+    unit: "t wood/person/yr"
+    dist: {type: normal, rel95: 0.3}
+    tier: 1
+    source: "CDM TOOL33 v03.1 (2025), average annual woody biomass consumption per person"
+  household_size:
+    value: 5.3
+    unit: persons
+    dist: {type: normal, rel95: 0.1}
+    tier: 2
+    source: "DRC DHS 2013-14; update with EDS-RDC III 2023-24"
+    confirm: true
+  fuel_savings:
+    value: 0.35
+    unit: fraction
+    dist: {type: normal, rel95: 0.3}
+    tier: 1
+    source: "Default until kitchen performance tests are reported"
+    monitored_by: ENR-03
+  usage:
+    value: 0.75
+    unit: fraction
+    dist: {type: normal, rel95: 0.2}
+    tier: 1
+    source: "Default until adoption surveys are reported"
+    monitored_by: ENR-02
+  usage_dropoff:
+    value: 0.10
+    unit: "fraction per year after year 2"
+    dist: {type: fixed}
+    tier: 1
+    source: "Gold Standard usage-survey experience"
+  device_life:
+    value: 5
+    unit: years
+    dist: {type: fixed}
+    tier: 1
+    source: "Gold Standard practice for improved biomass stoves"
+  fnrb:
+    by_country:
+      DRC:                 {value: 0.42, dist: {type: normal, sd: 0.17}}
+      CAR:                 {value: 0.42, dist: {type: normal, sd: 0.14}}
+      Cameroon:            {value: 0.38, dist: {type: normal, sd: 0.22}}
+      "Equatorial Guinea": {value: 0.31, dist: {type: normal, sd: 0.44}}
+      Gabon:               {value: 0.18, dist: {type: normal, sd: 0.74}}
+      Congo:               {value: 0.16, dist: {type: normal, sd: 0.54}}
+      default:             {value: 0.39, dist: {type: normal, sd: 0.17}}
+    unit: fraction
+    tier: 2
+    source: "CDM TOOL33 v03.1 (2025) Table 3 national defaults; standard deviations from Ghilardi & Bailis 2024 Table 5 (MoFuSS)"
+  ef_wood_co2:
+    value: 1.747
+    unit: "tCO2 per t wood"
+    dist: {type: normal, rel95: 0.05}
+    tier: 1
+    source: "IPCC 2006 Vol. 2 Table 2.5: 112 tCO2/TJ × NCV 0.0156 TJ/t"
+  ef_wood_nonco2:
+    value: 0.143
+    unit: "tCO2e per t wood"
+    dist: {type: normal, rel95: 0.5}
+    tier: 1
+    source: "IPCC 2006 Vol. 2 Table 2.5: CH4 300 kg/TJ, N2O 4 kg/TJ; AR6 GWP100"
+
+  # ── Fuelwood supply (potential only) ───────────────────────────────────
+  fuel_share:
+    value: 0.5
+    unit: fraction
+    dist: {type: triangular, low: 0.3, high: 0.8}
+    tier: 1
+    source: "Assumption: share of plantation and agroforestry wood sold as fuel; replace with harvest and sales records"
+    confirm: true

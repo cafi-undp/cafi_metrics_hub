@@ -1,6 +1,6 @@
-# Carbon accounting method for the CAFI Metrics Hub — draft v2.0 for validation
+# Carbon accounting method for the CAFI Metrics Hub — method 2.0
 
-Status: proposal. Nothing in the pipeline or dashboard changes until this document is validated. The numbers in section 8 are indicative, computed with the proposed defaults on the October 2026 workbook; the engine described in section 4 will recompute them with full uncertainty propagation.
+Status: Phase 1 implemented (`pipeline/carbon/`, `config/carbon/`). This document is the reference for the engine; the factor library on the Climate impact page is generated from `config/carbon/factors.yml`, so values there are authoritative. Section 8 gives the results of the current build.
 
 ## 1. Purpose and quality bar
 
@@ -211,12 +211,13 @@ Reference: logic of CDM AMS-I.E and Gold Standard renewable-biomass supply requi
 
 ## 8. Indicative portfolio effect (October 2026 data, as of 2025, central values)
 
-| | Today | Inventory ledger | Intervention ledger |
+| | Previous coefficients | Inventory ledger (removals) | Intervention ledger (net, after leakage and buffer) |
 |---|---|---|---|
-| Full cycle / expected | 31.4 Mt CO2e | ≈ 13.2 Mt CO2e removals | ≈ 15.0 Mt CO2e net (≈ 12 Mt after 20 % buffer) |
-| Realised to date | 9.6 Mt CO2e | ≈ 1.9 Mt CO2e | ≈ 2.2 Mt CO2e |
+| Expected, full cycle | 31.4 Mt CO2e | 13.4 Mt CO2e (p5–p95: 7.1–19.9) | 11.0 Mt CO2e (p5–p95: 5.7–16.3) |
+| Realised to date | 9.6 Mt CO2e | 1.8 Mt CO2e | 1.7 Mt CO2e |
+| Shown apart | — | — | indicative soil carbon 0.6 Mt; fuelwood displacement potential 0.5 Mt |
 
-The engine will replace these with Monte Carlo bands. The drop is driven by the long-term-average rule for harvested systems, the cookstove parameters, and the removal of the 50 % avoided-deforestation add-on on agriculture; regeneration rises.
+Bands come from 2,000 Monte Carlo draws over the library distributions, per indicator and stratum. The drop against the previous coefficients is driven by the long-term-average rule for harvested systems, the cookstove parameters (national fNRB, five-year device life, usage drop-off), the non-permanence buffer, and the removal of the 50 % avoided-deforestation add-on on agriculture; natural regeneration rises.
 
 ## 9. Implementation in this repository
 
@@ -232,14 +233,14 @@ Phase 2 (monitoring data): ENR-02/03 and CLM-02 ingestion with tier escalation; 
 
 Phase 3 (spatial): programme polygons; biomass-map time series for the ARR performance benchmark and CLM-02; deforestation-risk allocation of the jurisdictional baseline (VMD0055 logic); alert-based reversal detection; strata derived from maps instead of country defaults.
 
-## 10. Decisions requested
+## 10. Decisions taken (Phase 1)
 
-1. Adopt the two-ledger design and the claims register as the structure of the Hub's carbon reporting.
-2. Confirm the headline: inventory removals and intervention net benefit shown side by side, central value with p5–p95 band, ex post where available.
-3. Harvested systems credited at long-term average (VCS rule) rather than peak stock.
-4. Soil carbon and displaced fuelwood shown as indicative/potential only until measured.
-5. Default rotation 10 years, buffer 20 % / 25 %, REDD leakage 20 %, effectiveness 41 % ex ante — all replaced by monitoring data under the tier-escalation rules.
-6. Phase 1 scope as in section 9.
+1. Two-ledger design and claims register adopted.
+2. Headline: intervention net benefit (expected, full cycle) with its p5–p95 band on the Overview; inventory removals and realised-to-date shown beside it; the Climate page switches between ledgers and between expected and realised.
+3. Harvested systems credited at long-term average (VCS rule).
+4. Soil carbon and displaced fuelwood shown as indicative/potential only.
+5. Defaults: rotation 10 years, buffer 20 % (25 % fire-exclusion), REDD leakage 20 %, effectiveness 41 % ex ante; natural regeneration uses the savanna-mosaic growth rate in every zone (the rainforest secondary-forest rate describes regrowth after clearing, not savanna succession). All flagged defaults are replaced by monitoring data under the tier-escalation rules.
+6. Implementation notes: cohorts retire oldest-first on a reported decrease and the released stock is booked as an emission; growth is counted from the year after establishment; Monte Carlo bands are computed per indicator × stratum on the per-unit value and applied to the record series; the Phase 2 and 3 items of section 9 remain open.
 
 ## 11. Sources
 

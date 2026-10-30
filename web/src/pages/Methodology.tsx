@@ -46,17 +46,17 @@ export function Methodology() {
           <ul className="small ink-2" style={{ paddingLeft: 18, lineHeight: 1.7 }}>
             {fr ? (
               <>
-                <li><b>Engagées (cycle complet)</b> = résultat cumulé × facteur annuel × horizon (10 ou 15 ans).</li>
-                <li><b>Réalisées à date</b> = chaque année, la superficie (ou les foyers) en place produit une année de bénéfice.</li>
-                <li><b>Cible</b> = cible finale × facteur × même horizon que les résultats.</li>
-                <li>Les facteurs sont dans <code>config/co2_factors.yml</code> et visibles sur la page Impact climatique.</li>
+                <li>Méthode {m.carbon.method} : <b>deux registres</b>, jamais compensés l'un par l'autre. <b>Inventaire</b> = variations de stock de carbone dans le périmètre (logique GHG Protocol Land Sector &amp; Removals). <b>Intervention</b> = bénéfice net vs un scénario de référence, après fuites et tampon de non-permanence (ISO 14064-2, méthodologies approuvées CCP : VM0047, VM0048, TPDDTEC v4 / VM0050).</li>
+                <li>Chaque hausse annuelle d'un indicateur crée une <b>cohorte</b> qui accumule du carbone jusqu'à un plafond ; les systèmes récoltés (plantations bois-énergie, agroforesterie) sont crédités au <b>stock moyen à long terme</b> (moitié du pic).</li>
+                <li><b>Attendu (cycle complet)</b> = stock en place × valeur unitaire sur 20 ans ; <b>réalisé à date</b> = somme des cohortes à leur âge. Bandes p5–p95 par Monte Carlo ({m.carbon.draws} tirages) sur les incertitudes GIEC.</li>
+                <li>Carbone du sol (indicatif) et bois-énergie déplacé (potentiel) sont affichés à part. Paramètres, sources et niveaux (Tier) : page Impact climatique et <code>docs/carbon-methodology.md</code>.</li>
               </>
             ) : (
               <>
-                <li><b>Committed (full cycle)</b> = cumulative result × annual factor × horizon (10 or 15 years).</li>
-                <li><b>Realised to date</b> = each year, the area (or stoves) in place delivers one year of benefit.</li>
-                <li><b>Target</b> = final target × factor × the same horizon as results.</li>
-                <li>Factors live in <code>config/co2_factors.yml</code> and are listed on the Climate impact page.</li>
+                <li>Method {m.carbon.method}: <b>two ledgers</b>, never netted against each other. <b>Inventory</b> = carbon stock changes within the boundary (GHG Protocol Land Sector &amp; Removals logic). <b>Intervention</b> = net benefit against a baseline, after leakage and a non-permanence buffer (ISO 14064-2; CCP-approved methodologies VM0047, VM0048, TPDDTEC v4 / VM0050).</li>
+                <li>Each year's increase of an indicator is a <b>cohort</b> that accumulates carbon up to a cap; harvested systems (wood-energy plantations, agroforestry) are credited at the <b>long-term average stock</b> (half the peak).</li>
+                <li><b>Expected (full cycle)</b> = stock in place × per-unit value over 20 years; <b>realised to date</b> = sum of the cohorts at their age. p5–p95 bands by Monte Carlo ({m.carbon.draws} draws) over the IPCC uncertainties.</li>
+                <li>Soil carbon (indicative) and displaced fuelwood (potential) are shown apart. Parameters, sources and tiers: Climate impact page and <code>docs/carbon-methodology.md</code>.</li>
               </>
             )}
           </ul>

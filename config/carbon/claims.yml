@@ -1,0 +1,24 @@
+# Claims register: who else accounts for the results of an MPTF project.
+# Prevents the same tonne being presented twice as additional.
+#
+#   status: cafi_contribution   (default when a project is not listed)
+#           national_programme  counted in a host-country ER programme / FREL
+#           corporate_inventory reported in a company's Scope 3 inventory
+#           inset_unit          issued as a verified inset unit
+#           credit              issued as a carbon credit (registry, serials)
+#           article6            transferred with corresponding adjustment
+#
+# Keyed by MPTF project id. "confirm: true" = status to be verified.
+
+103850:
+  status: national_programme
+  note: "PIREDD Mai-Ndombe lies inside the FCPF Mai-Ndombe Emission Reductions Programme area; reductions are accounted in that programme."
+  confirm: true
+140783:
+  status: corporate_inventory
+  note: "Private-sector supply-chain project; partner companies may report hectares in Scope 3 FLAG inventories."
+  confirm: true
+141300:
+  status: corporate_inventory
+  note: "Grand Mbam landscape with private-sector PES component (KfW); check partner inventory and inset claims."
+  confirm: true

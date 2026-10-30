@@ -4,10 +4,10 @@
                              [--out web/public/data]
 
 Steps: read the CumulResults sheet -> normalise text -> re-code indicators to the
-CAFI standard codes (config/reference workbook) -> run quality checks -> derive
-CO2 from config/co2_factors.yml -> link programmes to MPTF projects and the
-standard indicators each project is expected to report -> write metrics.json
-and quality.json.
+CAFI standard codes (config/reference workbook) -> run quality checks -> run the
+carbon engine (config/carbon, docs/carbon-methodology.md) -> link programmes to
+MPTF projects and the standard indicators each project is expected to report ->
+write metrics.json and quality.json.
 Exits with status 1 when a blocking (error-level) check fails, so CI never
 publishes a broken dataset.
 """
@@ -26,6 +26,7 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from pipeline.carbon import CarbonConfig, CarbonEngine
 from pipeline.portfolio import read_projects
 from pipeline.quality import QualityReport
 from pipeline.reference import load_project_reference, load_reference
@@ -67,7 +68,7 @@ class Config:
     countries: dict[str, dict]
     programmes: dict[str, list[int]]
     pass_through: dict[int, str]
-    factors: dict[str, list[dict]]
+    carbon: CarbonConfig
     headline: dict
     activities: list[dict]
     project_meta: dict[int, dict]
@@ -78,12 +79,13 @@ class Config:
         def y(name):
             path = config_dir / name
             return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
-        ind, co2 = y("indicators.yml"), y("co2_factors.yml")
+        ind = y("indicators.yml")
         ref = load_reference(config_dir / ind["reference"])
         proj = load_project_reference(config_dir / ind["reference"], set(ref["indicators"]))
-        unknown = [c for c in (co2.get("factors") or {}) if c not in ref["indicators"]]
+        carbon = CarbonConfig.load(config_dir)
+        unknown = [c for c in carbon.archetypes if c not in ref["indicators"]]
         if unknown:
-            raise ValueError(f"co2_factors.yml: codes not in the reference workbook: {unknown}")
+            raise ValueError(f"config/carbon/archetypes.yml: codes not in the reference workbook: {unknown}")
         return cls(
             categories=ref["categories"],
             subcategories=ref["subcategories"],
@@ -97,7 +99,7 @@ class Config:
             countries=ind["countries"],
             programmes={clean_text(k): [int(x) for x in (v or [])] for k, v in (y("programmes.yml") or {}).items()},
             pass_through={int(k): clean_text(v) for k, v in ((y("portfolio.yml") or {}).get("pass_through") or {}).items()},
-            factors={str(k): v for k, v in (co2.get("factors") or {}).items()},
+            carbon=carbon,
             headline=y("headline.yml"),
             activities=proj["activities"],
             project_meta=proj["projects"],
@@ -334,42 +336,6 @@ def default_year(df: pd.DataFrame, years: list[int]) -> int:
     return complete[-1] if complete else years[-1]
 
 
-def carry_forward(values: list[float | None]) -> list[float | None]:
-    out, last = [], None
-    for v in values:
-        last = v if v is not None else last
-        out.append(last)
-    return out
-
-
-def co2_for(code: str, filled: list[float | None], target: float | None, factors: dict) -> dict | None:
-    comps = factors.get(code)
-    if not comps:
-        return None
-    absorbed_rate = sum(c["rate"] * c["horizon"] for c in comps if c["component"] == "absorbed")
-    avoided_rate = sum(c["rate"] * c["horizon"] for c in comps if c["component"] == "avoided")
-    annual = sum(c["rate"] for c in comps)
-
-    def r(x):
-        return None if x is None else round(x, 1)
-
-    # Each year, the cumulative area/items in place accrue one year of benefit.
-    realised, acc = [], 0.0
-    for v in filled:
-        if v is None:
-            realised.append(None)
-            continue
-        acc += v * annual
-        realised.append(r(acc))
-    return {
-        "absorbed": [r(None if v is None else v * absorbed_rate) for v in filled],
-        "avoided": [r(None if v is None else v * avoided_rate) for v in filled],
-        "realised": realised,
-        "targetAbsorbed": r((target or 0) * absorbed_rate),
-        "targetAvoided": r((target or 0) * avoided_rate),
-    }
-
-
 def link_projects(programmes: list[dict], projects: list[dict], config: Config, rep: QualityReport) -> None:
     by_id = {p["id"]: p for p in projects}
     unlinked, missing = [], []
@@ -460,6 +426,35 @@ def coverage_checks(df: pd.DataFrame, programmes: list[dict], projects: list[dic
                  extra)
 
 
+def carbon_checks(records: list[dict], df: pd.DataFrame, years: list[int], config: Config, rep: QualityReport) -> None:
+    """Data-quality notes from the carbon engine: reversals and defaults still in use."""
+    from pipeline.carbon.cohorts import reversals
+    rev, used = [], {}
+    for rec, (_, row) in zip(records, df.iterrows()):
+        c = rec["co2"]
+        if not c:
+            continue
+        for y_ret, y_c, area in reversals(rec["values"]):
+            rev.append({"row": rec["row"], "programme": row["programme"], "indicator": row["indicator"],
+                        "detail": f"{area:,.0f} units of the {years[y_c]} cohort retired in {years[y_ret]}; "
+                                  f"the stock released is booked as an emission"})
+        for fid in c["defaults"]:
+            used.setdefault((row["code"], fid), set()).add(row["programme"])
+    if rev:
+        rep.info("carbon-reversal", "Carbon: reported area decreased (reversal)",
+                 "A cumulative result went down. The carbon engine retires the oldest cohorts and books the "
+                 "released stock as an emission in that year. Check whether the decrease is a data-entry error.",
+                 rev)
+    if used:
+        lib = config.carbon.library
+        rep.info("carbon-defaults", "Carbon: defaults waiting for monitoring data",
+                 "These parameters use a default until the monitored indicator is reported for the programme.",
+                 [{"indicator": code, "value": fid,
+                   "detail": f"default {lib.raw[fid].get('value', lib.raw[fid].get('by_country', {}).get('default', {}).get('value', '—'))} "
+                             f"→ replaced by {lib.raw[fid]['monitored_by']} · {len(progs)} programme(s)"}
+                  for (code, fid), progs in sorted(used.items())])
+
+
 def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dict]) -> dict:
     df, years = ds.frame, ds.years
     df = df[df["code"].isin(config.indicators)]
@@ -484,6 +479,8 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
 
     # Several old indicators feeding one standard code keep their type (e.g. buildings / bridges).
     sources = df.groupby("code")["legacy"].nunique()
+    prog_country = {p["name"]: p["country"] for p in programmes}
+    engine = CarbonEngine(config.carbon, years)
     records = []
     for i in range(len(df)):
         row = df.iloc[i]
@@ -501,8 +498,9 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
             "label": row["label"],
             "target": target,
             "values": values,
-            "co2": co2_for(row["code"], carry_forward(values), target, config.factors),
+            "co2": engine.compute(row["code"], values, target, prog_country[row["programme"]], row["programme"]),
         })
+    carbon_checks(records, df, years, config, ds.report)
 
     reported = set(df["code"])
     country_ids = set(df["country"]) | {p["country"] for p in projects}
@@ -526,7 +524,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
         "subcategories": config.subcategories,
         "indicators": [
             {**{k: v for k, v in ind.items() if k not in ("category", "sort")},
-             "outcome": ind["category"], "hasCo2": code in config.factors, "reported": code in reported}
+             "outcome": ind["category"], "hasCo2": code in config.carbon.archetypes, "reported": code in reported}
             for code, ind in sorted(config.indicators.items(), key=lambda kv: (kv[1]["category"], kv[1]["sort"], kv[0]))
         ],
         "countries": [
@@ -539,10 +537,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
         "records": records,
         "projects": projects,
         "activities": config.activities,
-        "co2Factors": [
-            {"indicator": code, **{k: c[k] for k in ("component", "rate", "horizon", "formula")}}
-            for code, comps in sorted(config.factors.items()) for c in comps
-        ],
+        "carbon": engine.describe(programmes),
         "headline": {
             "beneficiaries": config.headline["beneficiaries"],
             "anticipatedCo2": config.headline["anticipated_co2"],
