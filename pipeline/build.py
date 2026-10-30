@@ -47,7 +47,7 @@ COLUMNS = {
     "end year": "end",
     "final target": "target",
 }
-UNIT_ALIASES = {"hectare": "ha", "nombre": "count", "km": "km"}
+UNIT_ALIASES = {"hectare": "ha", "hectares": "ha", "ha": "ha", "nombre": "count", "nombres": "count", "number": "count", "count": "count", "km": "km"}
 # Units in the workbook that are acceptable for a catalogue unit.
 UNIT_COMPATIBLE = {"ha": {"ha"}, "km": {"km"}, "count": {"count"}, "people": {"count"}}
 STANDARD_CODE = re.compile(r"^([A-Z]{3}-\d{2})\b")
@@ -159,6 +159,13 @@ def read_workbook(path: Path, config: Config) -> Dataset:
         report.error("schema", "Required columns missing",
                      f"Sheet '{SHEET}' is missing: {', '.join(missing)}.")
         return Dataset(years=[], frame=pd.DataFrame(), report=report)
+    seen: dict = {}
+    for col, target in rename.items():
+        if target in seen:
+            report.error("schema", "Two columns map to the same field",
+                         f"'{seen[target]}' and '{col}' both read as '{target}'. Remove or rename one of them.")
+            return Dataset(years=[], frame=pd.DataFrame(), report=report)
+        seen[target] = col
     if not years:
         report.error("schema", "No year columns", "Expected columns named like 2020, 2021, …")
         return Dataset(years=[], frame=pd.DataFrame(), report=report)
@@ -166,6 +173,10 @@ def read_workbook(path: Path, config: Config) -> Dataset:
     df = raw.rename(columns=rename)[list(COLUMNS.values()) + sorted(years)].copy()
     df = df.dropna(how="all", subset=["programme", "indicator"])
     df.insert(0, "row", df.index + 2)  # Excel row number (header is row 1)
+    if df.empty:
+        report.error("schema", "No data rows",
+                     f"Sheet '{SHEET}' has a header but no rows. The workbook may be a template or a truncated download.")
+        return Dataset(years=sorted(years), frame=pd.DataFrame(), report=report)
     return Dataset(years=sorted(years), frame=df.reset_index(drop=True), report=report)
 
 
@@ -197,6 +208,26 @@ def normalise(ds: Dataset, config: Config) -> Dataset:
         for s in spellings.index:
             canon[s] = spellings.index[0]
     df["partner"] = df["partner"].map(canon)
+
+    # Programme spelling: the same programme written in two cases would become two programmes.
+    pcanon = {}
+    for _, grp in df.groupby(df["programme"].str.casefold()):
+        spellings = grp["programme"].value_counts()
+        if len(spellings) > 1:
+            rep.warning("programme-case", "Inconsistent programme spelling",
+                        "The same programme is written in more than one way; the most frequent spelling is used.",
+                        [{"value": " / ".join(spellings.index), "field": "programme"}])
+        for s in spellings.index:
+            pcanon[s] = spellings.index[0]
+    df["programme"] = df["programme"].map(pcanon)
+    slugs: dict = {}
+    for name in df["programme"].unique():
+        slug = slugify(name)
+        if slug in slugs and slugs[slug] != name:
+            rep.error("programme-id", "Two programmes share the same identifier",
+                      "Programme names must differ by more than punctuation or accents.",
+                      [{"value": f"{slugs[slug]} / {name}", "field": "programme"}])
+        slugs[slug] = name
 
     # Indicator code: a standard code ("GOV-03 …") or an old number ("06. …")
     # re-coded through config/indicators.yml.
@@ -295,8 +326,14 @@ def quality_checks(ds: Dataset, config: Config) -> None:
                  [{"row": int(r.row), "programme": r.programme, "indicator": r.indicator,
                    "detail": r.label} for r in no_target.itertuples()])
 
+    def cumulative(code: str) -> bool:
+        meta = config.indicators.get(code) or {}
+        return "flow" not in meta.get("measurement", "").casefold() and "not summed" not in meta.get("aggregation", "").casefold()
+
     drops = []
     for i in df.index:
+        if not cumulative(df.at[i, "code"]):
+            continue  # a flow (per-season area) or a rate may legitimately go down
         prev = None
         for y in years:
             v = df.at[i, y]
@@ -349,7 +386,7 @@ def link_projects(programmes: list[dict], projects: list[dict], config: Config, 
                 missing.append({"programme": prog["name"], "value": str(i)})
         if not ids:
             unlinked.append({"programme": prog["name"]})
-    if missing:
+    if missing and projects:
         rep.warning("mptf-missing", "MPTF project id not found",
                     "config/programmes.yml links these programmes to an id that is not in the project list.",
                     missing)
@@ -426,14 +463,28 @@ def coverage_checks(df: pd.DataFrame, programmes: list[dict], projects: list[dic
                  extra)
 
 
-def carbon_checks(records: list[dict], df: pd.DataFrame, years: list[int], config: Config, rep: QualityReport) -> None:
+def carbon_checks(records: list[dict], df: pd.DataFrame, years: list[int], config: Config, rep: QualityReport,
+                  engine: CarbonEngine) -> None:
     """Data-quality notes from the carbon engine: reversals, monitored data in use, defaults still in use."""
     from pipeline.carbon.cohorts import reversals
     rev, over_buffer, used, monitored = [], [], {}, {}
+    names = set(df["programme"].unique())
+    unknown = [{"value": p, "detail": f"{where}: no programme of that name in the workbook"}
+               for where, keys in (("strata.yml", config.carbon.strata_programmes), ("overrides.yml", config.carbon.overrides))
+               for p in keys if p not in names]
+    if unknown:
+        rep.warning("carbon-config-programme", "Carbon: programme name in config not found",
+                    "A programme override in config/carbon falls back to the country default because the name does not match.", unknown)
+    if engine.notes:
+        rep.warning("carbon-clm02-cumulative", "Carbon: CLM-02 looks like a running total",
+                    "CLM-02 (deforestation in the project area) must be entered as hectares per year. "
+                    "A rising series makes the measured effectiveness collapse.", engine.notes)
     for rec, (_, row) in zip(records, df.iterrows()):
         c = rec["co2"]
         if not c:
             continue
+        if c.get("flow"):
+            continue  # flows never retire cohorts
         for y_ret, y_c, area in reversals(rec["values"]):
             rev.append({"row": rec["row"], "programme": row["programme"], "indicator": row["indicator"],
                         "detail": f"{area:,.0f} units of the {years[y_c]} cohort retired in {years[y_ret]}; "
@@ -499,7 +550,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
     # Several old indicators feeding one standard code keep their type (e.g. buildings / bridges).
     sources = df.groupby("code")["legacy"].nunique()
     prog_country = {p["name"]: p["country"] for p in programmes}
-    engine = CarbonEngine(config.carbon, years)
+    engine = CarbonEngine(config.carbon, years, measurement={c: i.get("measurement", "") for c, i in config.indicators.items()})
     engine.observe(df)
     records = []
     for i in range(len(df)):
@@ -520,7 +571,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
             "values": values,
             "co2": engine.compute(row["code"], values, target, prog_country[row["programme"]], row["programme"]),
         })
-    carbon_checks(records, df, years, config, ds.report)
+    carbon_checks(records, df, years, config, ds.report, engine)
 
     reported = set(df["code"])
     country_ids = set(df["country"]) | {p["country"] for p in projects}

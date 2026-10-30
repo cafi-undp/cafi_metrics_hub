@@ -177,7 +177,7 @@ export function Climate() {
         <ChartCard className="span-5" title={t("Expected and realised over time")} sub={t("Full cycle of what is in place each year, with the p5–p95 band")}
           table={{
             cols: [
-              { key: "y", label: "Year", value: (r: { y: number; i: number }) => r.y },
+              { key: "y", label: t("Year"), value: (r: { y: number; i: number }) => r.y },
               { key: "e", label: t("Expected"), numeric: true, value: (r: { y: number; i: number }) => Math.round(series[r.i].expected) },
               { key: "lo", label: "p5", numeric: true, value: (r: { y: number; i: number }) => Math.round(series[r.i].low) },
               { key: "hi", label: "p95", numeric: true, value: (r: { y: number; i: number }) => Math.round(series[r.i].high) },
@@ -321,8 +321,8 @@ export function Climate() {
         <DataTable rows={Object.entries(m.carbon.archetypes).map(([code, a]) => ({ code, ...a }))} cols={[
           { key: "c", label: t("Indicator"), value: (r) => `${r.code} ${nameOf(ix.indicators.get(r.code)!)}` },
           { key: "l", label: t("Archetype"), value: (r) => r.label },
-          { key: "m", label: "Module", value: (r) => moduleLabel(r.module) },
-          { key: "s", label: "System", value: (r) => r.system ?? (r.ledger ?? "") },
+          { key: "m", label: t("Module"), value: (r) => moduleLabel(r.module) },
+          { key: "s", label: t("System"), value: (r) => r.system ?? (r.ledger ?? "") },
           { key: "r", label: t("Reference"), value: (r) => r.reference ?? "", render: (r) => <span className="xsmall">{r.reference}</span> },
         ] as Column<{ code: string; module: string; label: string; system?: string; reference?: string; ledger?: string }>[]} />
       </section>

@@ -204,3 +204,56 @@ def test_claims_derived_from_private_sector_type(engine):
     assert claims[103850]["status"] == "national_programme" and "derived" not in claims[103850]
     meta = engine.describe([], projects)
     assert "monitoring" in meta and meta["claims"]
+
+
+# ───────────── Review fixes ─────────────
+def test_bands_are_centred_on_the_library_value_and_order_independent(engine):
+    # Gabon fNRB has a wide spread: the clipped normal used to pull the draw mean far from 0.18.
+    e1 = CarbonEngine(engine.config, YEARS)
+    ctx = engine.config.stratum("Gabon", "X")
+    mod, f = e1._resolve("ENR-01", ctx)
+    central = float(np.asarray(mod.per_unit({k: x.value for k, x in f.items()})["intervention"]))
+    rng = np.random.default_rng([20261030, 0])
+    draws = {k: x.sample(20000, rng) for k, x in f.items()}
+    arr = np.asarray(mod.per_unit(draws)["intervention"])
+    lo, hi = e1.band("ENR-01", ctx)["intervention"]
+    assert abs(lo - np.percentile(arr, 5) / central) < 0.08 and abs(hi - np.percentile(arr, 95) / central) < 0.25
+    assert abs(float(arr.mean()) / central - 1) < 0.1          # beta keeps the mean at the central value
+    # order independence: computing another key first changes nothing
+    e2 = CarbonEngine(engine.config, YEARS)
+    e2.band("FOR-02", engine.config.stratum("DRC", "X"))
+    assert e2.band("ENR-01", ctx) == e1.band("ENR-01", ctx)
+
+
+def test_tier_is_the_weakest_input(engine):
+    out = engine.compute("ENR-01", [None, 100], None, "DRC", "X")
+    assert out["tier"] == 1            # usage and savings are Tier 1 defaults even if fNRB is Tier 2
+
+
+def test_flow_indicators_never_retire_cohorts(engine):
+    eng = CarbonEngine(engine.config, YEARS, measurement={"AGR-01": "Annual / Flow"})
+    out = eng.compute("AGR-01", [None, 500, 300, 500, None, None], None, "DRC", "X")
+    assert out["flow"] is True
+    assert out["inventory"]["emissions"][3] == 0 and out["reversal"] is None
+    assert out["indicative"]["expected"][2] == out["indicative"]["expected"][1]   # running maximum, no drop
+
+
+def test_clm02_running_total_is_flagged_and_baseline_labels_are_anchored(engine):
+    eng = CarbonEngine(engine.config, YEARS)
+    eng.observe(frame([
+        ("P", "FOR-04", "forest", [None, 1000, 1000, 1000, 1000, 1000]),
+        ("P", "CLM-02", "Déforestation observée vs référence", [None, 3, 6, 9, None, None]),
+    ]))
+    assert eng.monitored["P"].defor_observed is not None and eng.monitored["P"].defor_baseline is None
+    assert eng.notes and eng.notes[0]["indicator"] == "CLM-02"
+    eng2 = CarbonEngine(engine.config, YEARS)
+    eng2.observe(frame([("P", "CLM-02", "Référence (scénario sans projet)", [None, 10, None, None, None, None]),
+                        ("P", "CLM-02", "observed", [None, 4, None, None, None, None])]))
+    assert eng2.monitored["P"].defor_baseline[1] == 10 and eng2.monitored["P"].defor_observed[1] == 4
+
+
+def test_defor_rate_stays_a_default_after_clm02(engine):
+    eng = CarbonEngine(engine.config, YEARS)
+    eng.observe(frame([("P", "FOR-04", "f", [None, 1000, 1000, 1000, 1000, 1000]), ("P", "CLM-02", "obs", [None, None, 3.5, None, None, None])]))
+    out = eng.compute("FOR-04", [None, 1000, 1000, 1000, 1000, 1000], None, "DRC", "P")
+    assert "effectiveness_default" not in out["defaults"]

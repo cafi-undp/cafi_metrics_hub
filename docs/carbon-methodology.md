@@ -149,53 +149,52 @@ Reference: logic of CDM AMS-I.E and Gold Standard renewable-biomass supply requi
 ## 5. Cross-cutting rules
 
 - **Vintages and ex ante / ex post.** Every cohort-year result is tagged ex ante (defaults) or ex post (monitoring data applied). The dashboard defaults to the ex-post series where it exists and labels the rest.
-- **Uncertainty.** Each library parameter has a distribution from its source (IPCC ±% at 95 %, SD from Table 4.9, TOOL33 SD). The engine draws 2,000 correlated samples per stratum, propagates them through the module, and reports p5, mean and p95. Where the 90 % half-width exceeds 15 % of the mean, a conservativeness deduction (VCS rule) is applied to the "creditable" line; the central estimate stays visible.
+- **Uncertainty.** Each library parameter has a distribution from its source (IPCC ±% at 95 %, SD from Table 4.9, TOOL33 SD). Fractions (fNRB, usage, savings, effectiveness) use a beta distribution with that mean and SD, so they stay in (0, 1) and keep their mean; other parameters use normal or triangular distributions. The engine draws 2,000 independent samples per parameter for each indicator × stratum, seeded per key so results do not depend on row order, propagates them through the module's per-unit value, and publishes the 5th and 95th percentiles as ratios to the central value; the record series are multiplied by those ratios. No conservativeness deduction is applied: the central value is shown with its band.
 - **Reversals.** Decreases in reported area, fire alerts or forest-loss alerts inside a cohort reduce its stock in that year; the buffer absorbs the loss in the intervention ledger; the inventory ledger reports it as an emission.
 - **Double counting.** Claims register (2.3); overlapping cohorts (same hectare reported under two indicators, for example LUT-02 and FOR-04) are flagged by the data-quality checks and counted once in carbon.
 - **Transparency.** Factor library versions, strata and claims are in git; each published result carries the method version (`carbon.method = 2.0`) and the data timestamp; the Methodology page is generated from the library.
 - **Tier escalation.** Rules in `archetypes.yml` say which monitored indicator replaces which default: ENR-02 → U, ENR-03 → S, CLM-02 → effectiveness, biomass-map benchmark → ARR baseline, survival threshold → mortality, soil sampling → SOC into inventory. The engine applies the best available tier per cohort and records which tier produced each number.
 
-## 6. Default parameter library, version 2.0
+## 6. Parameter library, version 2.0
 
-| Id | Value | Uncertainty | Tier | Applies to | Source |
-|---|---|---|---|---|---|
-| cf | 0.47 tC/t d.m. | ±3 % | 1 | all | IPCC 2006 V4 Table 4.3 |
-| r_rainforest_af | 0.37 (AGB ≤125 t), 0.24 (>125) | ±90 % | 1 | BGB, tropical rainforest | IPCC 2006 Table 4.4 (2019 Africa values pending check) |
-| r_moist_af | 0.232 | ±90 % | 1 | BGB, tropical moist deciduous, Africa | IPCC 2019 Table 4.4 |
-| g_anr_moist | 2.9 t d.m./ha/yr AGB | SD 1.0 | 1 | FOR-01, moist deciduous Africa | IPCC 2019 Table 4.9, secondary ≤20 y |
-| g_anr_rain | 7.6 t d.m./ha/yr AGB | SD 5.9 | 1 | FOR-01, rainforest Africa | IPCC 2019 Table 4.9 |
-| g_plant_moist | 9 (3–15) t d.m./ha/yr AGB | triangular | 1 | FOR-02, other broadleaf ≤20 y, moist deciduous Africa | IPCC 2019 Table 4.10 |
-| g_plant_rain | 6 (5–8) t d.m./ha/yr AGB | triangular | 1 | FOR-02, rainforest Africa | IPCC 2019 Table 4.10 |
-| g_eucalyptus_moist | 20 t d.m./ha/yr AGB | ±50 % | 1 | FOR-02 eucalyptus, moist deciduous Africa | IPCC 2019 Table 4.10 |
-| g_alley_af | 2.75 + 0.59 tC/ha/yr | ±22 % | 1 | AGR-03 alley cropping, moist Africa | IPCC 2019 Table 5.2 (Cardinael 2018) |
-| g_multistrata_af | 2.98 + 0.72 tC/ha/yr | ±28 % | 1 | AGR-03 multistrata, moist Africa | IPCC 2019 Table 5.2 |
-| g_fallow_trop | 4.42 + 1.49 tC/ha/yr | ±15 % | 1 | AGR-03 woodlot / improved fallow | IPCC 2019 Table 5.2 |
-| g_shaded_perennial_af | 1.82 + 0.44 tC/ha/yr | ±34 % | 1 | AGR-02 cocoa/coffee agroforestry | IPCC 2019 Table 5.2 |
-| g_oilpalm | 2.4 tC/ha/yr AGB, 25-y cycle | ±41 % | 1 | AGR-02 oil palm | IPCC 2019 Table 5.3 |
-| maturity_perennial | 20 y | ±50 % | 1 | permanent ARR systems | IPCC 2019 Table 5.1 |
-| rotation_woodenergy | 10 y | 8–12 | 2 | harvested ARR systems | Mampu / Ibi Bateke practice; to confirm per programme |
-| cmax_secondary_drc | 111.5 tC/ha | ±25 % | 2 | ANR cap, DRC | DRC FREL Table 7-3 |
-| c_savanna_drc | 23.8 tC/ha | ±27 % | 2 | pre-project stock, savanna | DRC FREL Table 7-3 |
-| ef_defor_drc_dense | 690 tCO2e/ha | ±8 % | 2 | REDD, dense terra firme → cropland | DRC FREL Table 7-3 |
-| ef_defor_drc_secondary | 352 tCO2e/ha | ±25 % | 2 | REDD, secondary forest | DRC FREL Table 7-3 |
-| ef_defor_drc_open | 158 tCO2e/ha | ±21 % | 2 | REDD, dry/open forest | DRC FREL Table 7-3 |
-| defor_rate_drc | 0.7 %/yr (0.3–1.1) | triangular | 2 | REDD ex-ante allocation, DRC | DRC FREL 2010–14 activity data; UNFCCC technical annex 2015–18 |
-| effectiveness_default | 0.41 | ±50 % | 1 | REDD ex ante | Wolf et al. 2021 |
-| leakage_redd | 0.20 | — | 1 | REDD | VM0048 default pending leakage belt |
-| buffer_arr | 0.20 (0.25 fire-prone) | — | 1 | ARR | VCS Non-Permanence Risk Tool v4.2 logic |
-| buffer_redd | 0.20 | — | 1 | REDD | same |
-| soc_ref_moist_lac | 38 tC/ha | ±5 % | 1 | ALM, tropical moist LAC | IPCC 2019 Table 2.3 |
-| soc_ref_moist_sandy | 27 tC/ha | ±12 % | 1 | ALM, Bateke sands | IPCC 2019 Table 2.3 |
-| f_lu_cult, f_i_high | 0.83, 1.11 | ±11 %, ±10 % | 1 | ALM | IPCC 2019 Table 5.5 |
-| wood_per_capita | 0.5 t/yr | ±30 % | 1 | cooking baseline | CDM TOOL33 v03.1 |
-| household_size | 5.3 | ±10 % | 2 | DRC | DHS 2013-14 (update with EDS-RDC III 2023-24) |
-| fnrb_country | DRC 0.42 · CAF 0.42 · CMR 0.38 · GNQ 0.31 · GAB 0.18 · COG 0.16 | SD per TOOL33 | 2 | cooking, fuelwood | CDM TOOL33 v03.1 Table 3 (MoFuSS 2024) |
-| ef_wood_co2 | 1.75 tCO2/t | ±5 % | 1 | cooking | IPCC 2006 V2 Table 2.5; NCV 0.0156 TJ/t |
-| ef_wood_nonco2 | 0.14 tCO2e/t | ±50 % | 1 | cooking | IPCC 2006 V2 Table 2.5; AR6 GWP |
-| wood_to_charcoal | 4.0 | ±20 % | 1 | cooking, charcoal | CDM TOOL33 |
-| savings_default, usage_default | 0.35, 0.75 | flagged | 1 | cooking until ENR-03 / ENR-02 | to be replaced |
-| device_life | 5 y biomass stove, 10 y LPG/electric | — | 1 | cooking | Gold Standard practice |
-| leakage_cooking | 0.05 | — | 1 | cooking | TPDDTEC / AMS-II.G adjustment |
+Generated from `config/carbon/factors.yml`, which is authoritative; the Climate impact page shows the same table.
+
+| Id | Value | Distribution | Tier | Source |
+|---|---|---|---|---|
+| `cf` | 0.47 tC per t dry matter | normal ±3 % (95 %) | 1 | IPCC 2006 Vol. 4 Table 4.3 (tropical, whole tree) |
+| `root_shoot` | rainforest 0.37 · moist 0.232 t root per t shoot | normal ±90 % (95 %) | 1 | IPCC 2006 Table 4.4 (tropical rainforest); IPCC 2019 Table 4.4 (Africa, tropical moist deciduous) |
+| `g_anr` | 2.9 t d.m./ha/yr above ground | normal sd 1.0 | 1 | IPCC 2019 Vol. 4 Table 4.9, Africa, tropical moist deciduous, secondary forest ≤ 20 years |
+| `g_plantation` | moist 9 · rainforest 6 t d.m./ha/yr above ground | triangular 3–15 | 1 | IPCC 2019 Vol. 4 Table 4.10, Africa, other broadleaf plantations ≤ 20 years |
+| `g_alley` | 3.34 tC/ha/yr above + below ground | normal ±22 % (95 %) | 1 | IPCC 2019 Vol. 4 Table 5.2 (Cardinael et al. 2018), Africa tropical moist, alley cropping 2.75 + 0.59 |
+| `g_shaded_perennial` | 2.26 tC/ha/yr above + below ground | normal ±34 % (95 %) | 1 | IPCC 2019 Vol. 4 Table 5.2, Africa tropical moist, shaded perennial 1.82 + 0.44 |
+| `maturity_perennial` | 20 years | normal ±50 % (95 %) | 1 | IPCC 2019 Vol. 4 Table 5.1, harvest/maturity cycle of perennial systems |
+| `rotation_woodenergy` | 10 years | triangular 8–12 | 2 | Acacia wood-energy systems of the Bateke plateau (Mampu, Ibi); confirm per programme · to confirm |
+| `horizon` | 20 years | fixed | 1 | IPCC default transition period; crediting horizon for ex-ante figures |
+| `cmax_anr_gain` | 87.7 tC/ha | normal ±30 % (95 %) | 2 | DRC FREL 2018 Table 7-3: secondary forest 111.5 minus savanna 23.8 tC/ha (total biomass) |
+| `buffer_arr` | 0.2 fraction | fixed | 1 | VCS AFOLU Non-Permanence Risk Tool v4.2 logic, ex-ante default for planted systems |
+| `buffer_arr_fire` | 0.25 fraction | fixed | 1 | VCS AFOLU Non-Permanence Risk Tool v4.2 logic, fire-exclusion regeneration on savanna |
+| `buffer_redd` | 0.2 fraction | fixed | 1 | VCS AFOLU Non-Permanence Risk Tool v4.2 logic, ex-ante default |
+| `leakage_arr` | 0.0 fraction | fixed | 1 | VM0047 v1.1: no activity-shifting leakage when the land was degraded or unused |
+| `leakage_redd` | 0.2 fraction | fixed | 1 | VM0048 activity-shifting default pending leakage-belt monitoring |
+| `leakage_cooking` | 0.05 fraction | fixed | 1 | TPDDTEC v4 / AMS-II.G adjustment factor 0.95 |
+| `leakage_fuelwood` | 0.05 fraction | fixed | 1 | Renewable-biomass supply (AMS-I.E logic) leakage adjustment |
+| `defor_rate` | DRC 0.007 · default 0.005 fraction of forest per year | triangular 0.003–0.011 | 2 | DRC FREL 2010–2014 national activity data (≈1.1 %/yr) scaled by the 36 % lower 2015–2018 emissions reported in the UNFCCC technical annex; other countries: placeholder until their FREL activity data are loaded · to confirm |
+| `ef_deforestation` | DRC 466 · default 466 tCO2e/ha | normal ±20 % (95 %) | 2 | DRC FREL 2018 Table 7-3 biomass by stratum net of post-conversion stock (dense terra firme 690, secondary 352, dry/open 158), weighted by 2010–2014 activity data |
+| `effectiveness_default` | 0.41 fraction | beta ±50 % (95 %) | 1 | Wolf et al. 2021, Nature Ecol. Evol. 5:520–529: protected areas 41 % lower forest loss than matched controls · replaced by CLM-02 |
+| `soc_ref` | lac 38 · sandy 27 tC/ha (0–30 cm) | normal ±5 % (95 %) | 1 | IPCC 2019 Vol. 4 Table 2.3, tropical moist |
+| `f_lu_cultivated` | 0.83 factor | normal ±11 % (95 %) | 1 | IPCC 2019 Vol. 4 Table 5.5, long-term cultivated, tropical moist/wet |
+| `f_i_high` | 1.11 factor | normal ±10 % (95 %) | 1 | IPCC 2019 Vol. 4 Table 5.5, high input without manure, tropical moist/wet |
+| `soc_period` | 20 years | fixed | 1 | IPCC default transition period for soil stock changes |
+| `wood_per_capita` | 0.5 t wood/person/yr | normal ±30 % (95 %) | 1 | CDM TOOL33 v03.1 (2025), average annual woody biomass consumption per person |
+| `household_size` | 5.3 persons | normal ±10 % (95 %) | 2 | DRC EDS-RDC III 2023-24 summary report (5.3 persons per household), unchanged from DHS 2013-14 |
+| `fuel_savings` | 0.35 fraction | beta ±30 % (95 %) | 1 | Default until kitchen performance tests are reported · replaced by ENR-03 |
+| `usage` | 0.75 fraction | beta ±20 % (95 %) | 1 | Default until adoption surveys are reported · replaced by ENR-02 |
+| `usage_dropoff` | 0.1 fraction per year after year 2 | fixed | 1 | Gold Standard usage-survey experience |
+| `device_life` | 5 years | fixed | 1 | Gold Standard practice for improved biomass stoves |
+| `fnrb` | DRC 0.42 · CAR 0.42 · Cameroon 0.38 · Equatorial Guinea 0.31 · Gabon 0.18 · Congo 0.16 · default 0.39 fraction | beta sd 0.17 | 2 | CDM TOOL33 v03.1 (2025) Table 3 national defaults; standard deviations from Ghilardi & Bailis 2024 Table 5 (MoFuSS), sampled as a beta distribution bounded in (0, 1) |
+| `ef_wood_co2` | 1.747 tCO2 per t wood | normal ±5 % (95 %) | 1 | IPCC 2006 Vol. 2 Table 2.5: 112 tCO2/TJ × NCV 0.0156 TJ/t |
+| `ef_wood_nonco2` | 0.143 tCO2e per t wood | normal ±50 % (95 %) | 1 | IPCC 2006 Vol. 2 Table 2.5: CH4 300 kg/TJ, N2O 4 kg/TJ; AR6 GWP100 |
+| `fuel_share` | 0.5 fraction | triangular 0.3–0.8 | 1 | Assumption: share of plantation and agroforestry wood sold as fuel; replace with harvest and sales records · to confirm |
 
 ## 7. What each indicator yields per unit (defaults, DRC moist deciduous stratum)
 
@@ -217,14 +216,14 @@ Reference: logic of CDM AMS-I.E and Gold Standard renewable-biomass supply requi
 | Realised to date | 9.6 Mt CO2e | 1.8 Mt CO2e | 1.7 Mt CO2e |
 | Shown apart | — | — | indicative soil carbon 0.6 Mt; fuelwood displacement potential 0.5 Mt |
 
-Bands come from 2,000 Monte Carlo draws over the library distributions, per indicator and stratum. The drop against the previous coefficients is driven by the long-term-average rule for harvested systems, the cookstove parameters (national fNRB, five-year device life, usage drop-off), the non-permanence buffer, and the removal of the 50 % avoided-deforestation add-on on agriculture; natural regeneration rises.
+Bands come from 2,000 Monte Carlo draws per parameter over the library distributions, per indicator and stratum, seeded per key. The drop against the previous coefficients is driven by the long-term-average rule for harvested systems, the cookstove parameters (national fNRB, five-year device life, usage drop-off), the non-permanence buffer, and the removal of the 50 % avoided-deforestation add-on on agriculture; natural regeneration rises.
 
 ## 9. Implementation in this repository
 
 Phase 1 (engine and two ledgers, Tier 1/2 defaults):
 
 - `config/carbon/factors.yml`, `strata.yml`, `archetypes.yml`, `claims.yml`.
-- `pipeline/carbon/`: `library.py` (load, validate, version), `strata.py`, `cohorts.py`, `growth.py`, `modules/{arr,redd,alm,cooking,fuelwood}.py`, `uncertainty.py` (vectorised Monte Carlo, seeded), `ledger.py`, `build.py` hook writing `web/public/data/carbon.json`.
+- `pipeline/carbon/`: `library.py` (factors, distributions), `cohorts.py` (vintages, FIFO retirement), `modules.py` (ARR, REDD, ALM, cooking; fuelwood displacement inside ARR), `engine.py` (strata, tier escalation, Monte Carlo bands, ledgers, claims), called from `pipeline/build.py`, which embeds the results in `web/public/data/metrics.json` (`records[].co2` and the `carbon` block).
 - Dashboard: Climate page v2 (ledger toggle, ex-ante/ex-post, bands, archetype and pool breakdown, factor table with provenance), Methodology page generated from the library, Project and Programme pages show claim status, Data-quality page gains carbon checks (cohort decreases, missing stratum, overlapping hectares, defaults still in use).
 - Tests: golden values per module against hand calculations in this document; property tests (monotonic growth, cap respected, rotation halving, device life cut-off, vintage sums equal totals); reproducible Monte Carlo.
 - Documentation: this file becomes `docs/carbon-methodology.md` (EN) with an FR summary on the Methodology page.
@@ -245,3 +244,14 @@ Phase 3 (spatial): programme polygons; biomass-map time series for the ARR perfo
 ## 11. Sources
 
 IPCC 2006 Guidelines Vol. 2 Ch. 2 and Vol. 4 Ch. 4; IPCC 2019 Refinement Vol. 4 Ch. 2, 4, 5; IPCC AR6 WG1 Table 7.15 (GWP100). GHG Protocol Land Sector and Removals Standard v1.1 and Guidance v1.0 (2026). ISO 14064-2:2019. Verra VM0047 v1.1, VM0048 v1.0 and VMD0055, VM0042 v2.1, VM0050, VCS AFOLU Requirements and AFOLU Non-Permanence Risk Tool v4.2. Gold Standard Metered & Measured Energy Cooking Devices v1.2, TPDDTEC v4. ICVCM assessment decisions (Nov 2024, Dec 2024, Mar 2025, Oct 2025). ART TREES v2.0; FCPF Methodological Framework. CDM TOOL33 v03.1 (2025); Ghilardi & Bailis 2024 (MoFuSS fNRB). DRC NERF/FREL 2018 and UNFCCC technical annex; Republic of Congo, Gabon and Cameroon FRELs. Cardinael et al. 2018; Requena Suarez et al. 2019; Wolf et al. 2021. DRC DHS 2013-14. Berkeley Carbon Trading Project cookstove assessments.
+
+
+## 12. Review corrections (October 2026)
+
+- Monte Carlo bands are ratios to the central value (not to the draw mean) and fractions use beta distributions; the published p95 for countries with a wide fNRB spread (Gabon, Congo) is therefore wider than in the first build.
+- Bands are seeded per indicator × stratum, so adding or reordering rows does not move them.
+- The tier shown on a result is the weakest input's tier.
+- Flow indicators (`Annual / Flow` in the reference workbook, e.g. AGR-01) are stored cumulated in the sheet like every other code; a lower value is a reporting gap, never land taken out, so no cohort is retired and no emission is booked. CLM-02 must be entered as hectares deforested per year; a series that rises every year is flagged as a probable running total.
+- `defor_rate` keeps setting the baseline after CLM-02 is reported; only `effectiveness_default` is replaced.
+- Outcome and programme achievement averages cap each indicator at 100 % (the indicator's own figure stays uncapped), so one over-achieving indicator no longer lifts the average above what the others justify.
+- The 168 Mt "anticipated portfolio CO₂" on the Overview is a CAFI planning constant carried over from the previous report, used only as the denominator of the progress meter until it is sourced or replaced; it is not an output of this method.

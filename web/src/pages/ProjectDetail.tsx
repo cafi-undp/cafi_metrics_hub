@@ -18,7 +18,7 @@ export function ProjectDetail({ id }: { id: string }) {
   const cov = useMemo(() => (p ? coverage([p], recs) : null), [p, recs]);
 
   if (!p || !cov) {
-    return <div className="card empty" style={{ marginTop: 24 }}>Project not found. <Link to={{ page: "portfolio" }}>{t("Portfolio")}</Link></div>;
+    return <div className="card empty" style={{ marginTop: 24 }}>{t("Project not found.")} <Link to={{ page: "portfolio" }}>{t("Portfolio")}</Link></div>;
   }
   const programmes = p.programmes.map((x) => ix.programmes.get(x)).filter((x): x is NonNullable<typeof x> => !!x);
   const activities = m.activities.filter((a) => p.activities.includes(a.name));

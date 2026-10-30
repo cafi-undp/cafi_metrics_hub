@@ -92,10 +92,11 @@ def test_negative_and_text_values_block_build(tmp_path):
     assert {"negative", "not-a-number"} <= checks.keys()
 
 
-def test_cumulative_drop_is_flagged(tmp_path):
-    code, _, checks = run(tmp_path, [row(**{"2024": 50, "2025": 0})])
+def test_cumulative_drop_is_flagged_for_stocks_only(tmp_path):
+    stock = dict(Indicator="07. Number of local land use plans", **{"Unité": "Nombre", "2024": 50, "2025": 0})
+    code, _, checks = run(tmp_path, [row(**stock), row(Programme="B", **{"2024": 50, "2025": 0})])  # B: AGR-01 is a flow
     assert code == 0
-    assert checks["cumulative-drop"]["count"] == 1
+    assert checks["cumulative-drop"]["count"] == 1 and checks["cumulative-drop"]["items"][0]["programme"] == "Prog A"
 
 
 def test_records_carry_two_ledger_carbon_series():
@@ -180,3 +181,33 @@ def test_projects_carry_expected_indicators_and_coverage_checks():
     assert ("Programme Energie", "FIN-01") in missing and ("Programme Energie", "ENR-01") not in missing
     assert all("optional" not in i["detail"] for i in checks["coverage-missing"]["items"])
     assert checks["coverage-extra"]["severity"] == "info"
+
+
+def test_empty_sheet_blocks_the_build(tmp_path):
+    code, m, checks = run(tmp_path, [])
+    assert code == 1 and m is None and checks["schema"]["severity"] == "error"
+
+
+def test_programme_case_variants_are_merged(tmp_path):
+    code, m, checks = run(tmp_path, [row(Programme="Prog A"), row(Programme="prog a", Indicator="07. Number of local land use plans", **{"Unité": "Nombre"})])
+    assert code == 0
+    assert len(m["programmes"]) == 1 and "programme-case" in checks
+
+
+def test_duplicate_mapped_headers_are_a_schema_error(tmp_path):
+    xlsx = tmp_path / "in.xlsx"
+    pd.DataFrame([row()], columns=HEADER).rename(columns={"Final target": "final target"}).assign(**{"Final Target ": [100]}).to_excel(xlsx, sheet_name="CumulResults", index=False)
+    out = tmp_path / "out"
+    assert build(xlsx, out, CONFIG, None) == 1
+    checks = {c["id"]: c for c in json.loads((out / "quality.json").read_text())["checks"]}
+    assert "Two columns map" in checks["schema"]["title"]
+
+
+def test_unit_alias_ha_is_accepted(tmp_path):
+    code, _, checks = run(tmp_path, [row(**{"Unité": "ha"})])
+    assert code == 0 and "unit-mismatch" not in checks
+
+
+def test_no_mptf_missing_without_a_project_list(tmp_path):
+    code, _, checks = run(tmp_path, [row(Programme="PIREDD Kwilu")])   # linked in programmes.yml, no --projects given
+    assert code == 0 and "mptf-missing" not in checks

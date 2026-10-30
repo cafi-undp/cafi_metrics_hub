@@ -6,7 +6,7 @@
 # (by_country, by_zone, by_soil) and the source with table number.
 #
 #   dist: {type: fixed} | {type: normal, sd: x} | {type: normal, rel95: f}
-#         | {type: triangular, low: a, high: b}
+#         | {type: triangular, low: a, high: b} | {type: beta, sd: x}   (fractions)
 #   rel95 = half-width of the 95 % interval as a fraction of the value (IPCC style).
 #
 # "confirm: true" marks assumptions the programme team should confirm;
@@ -148,7 +148,6 @@ factors:
     tier: 2
     source: "DRC FREL 2010–2014 national activity data (≈1.1 %/yr) scaled by the 36 % lower 2015–2018 emissions reported in the UNFCCC technical annex; other countries: placeholder until their FREL activity data are loaded"
     confirm: true
-    monitored_by: CLM-02
   ef_deforestation:
     by_country:
       DRC:     {value: 466, dist: {type: normal, rel95: 0.2}}
@@ -159,7 +158,7 @@ factors:
   effectiveness_default:
     value: 0.41
     unit: fraction
-    dist: {type: normal, rel95: 0.5}
+    dist: {type: beta, rel95: 0.5}
     tier: 1
     source: "Wolf et al. 2021, Nature Ecol. Evol. 5:520–529: protected areas 41 % lower forest loss than matched controls"
     monitored_by: CLM-02
@@ -207,14 +206,14 @@ factors:
   fuel_savings:
     value: 0.35
     unit: fraction
-    dist: {type: normal, rel95: 0.3}
+    dist: {type: beta, rel95: 0.3}
     tier: 1
     source: "Default until kitchen performance tests are reported"
     monitored_by: ENR-03
   usage:
     value: 0.75
     unit: fraction
-    dist: {type: normal, rel95: 0.2}
+    dist: {type: beta, rel95: 0.2}
     tier: 1
     source: "Default until adoption surveys are reported"
     monitored_by: ENR-02
@@ -232,16 +231,16 @@ factors:
     source: "Gold Standard practice for improved biomass stoves"
   fnrb:
     by_country:
-      DRC:                 {value: 0.42, dist: {type: normal, sd: 0.17}}
-      CAR:                 {value: 0.42, dist: {type: normal, sd: 0.14}}
-      Cameroon:            {value: 0.38, dist: {type: normal, sd: 0.22}}
-      "Equatorial Guinea": {value: 0.31, dist: {type: normal, sd: 0.44}}
-      Gabon:               {value: 0.18, dist: {type: normal, sd: 0.74}}
-      Congo:               {value: 0.16, dist: {type: normal, sd: 0.54}}
-      default:             {value: 0.39, dist: {type: normal, sd: 0.17}}
+      DRC:                 {value: 0.42, dist: {type: beta, sd: 0.17}}
+      CAR:                 {value: 0.42, dist: {type: beta, sd: 0.14}}
+      Cameroon:            {value: 0.38, dist: {type: beta, sd: 0.22}}
+      "Equatorial Guinea": {value: 0.31, dist: {type: beta, sd: 0.44}}
+      Gabon:               {value: 0.18, dist: {type: beta, sd: 0.74}}
+      Congo:               {value: 0.16, dist: {type: beta, sd: 0.54}}
+      default:             {value: 0.39, dist: {type: beta, sd: 0.17}}
     unit: fraction
     tier: 2
-    source: "CDM TOOL33 v03.1 (2025) Table 3 national defaults; standard deviations from Ghilardi & Bailis 2024 Table 5 (MoFuSS)"
+    source: "CDM TOOL33 v03.1 (2025) Table 3 national defaults; standard deviations from Ghilardi & Bailis 2024 Table 5 (MoFuSS), sampled as a beta distribution bounded in (0, 1)"
   ef_wood_co2:
     value: 1.747
     unit: "tCO2 per t wood"

@@ -9,10 +9,12 @@ import { axisBase, esc, tipRow, tipTitle, tooltipBase } from "../lib/echarts";
 import { Chart } from "../components/Chart";
 import type { Indicator } from "../lib/types";
 import { ChartCard, DataTable, Legend, Meter, MiniMeter, STATUS_META, StatusBadge, type Column } from "../components/ui";
+import { Link } from "../components/Shell";
 
 export function OutcomePage({ id }: { id: string }) {
   const { m, ix, lang, navigate } = useApp();
   const { records, yi, year, years } = useFiltered();
+  const known = m.outcomes.some((o) => o.id === id);
   const outcome = m.outcomes.find((o) => o.id === id) ?? m.outcomes[0];
   const color = outcomeVar(m, outcome.id);
   const recs = useMemo(() => records.filter((r) => ix.outcomeOf(r) === outcome.id), [records, ix, outcome.id]);
@@ -22,6 +24,15 @@ export function OutcomePage({ id }: { id: string }) {
   const rankCode = aggs.find((a) => a.indicator.code === rankInd)?.indicator.code ?? aggs[0]?.indicator.code;
   const catalogue = m.indicators.filter((i) => i.outcome === outcome.id);
   const reportedCats = new Set(m.indicators.filter((i) => i.reported).map((i) => i.outcome));
+  const reportedCount = (oid: string) => m.indicators.filter((i) => i.outcome === oid && i.reported).length;
+
+  if (id && !known) {
+    return (
+      <div className="card empty" style={{ marginTop: 24 }}>
+        {t("No outcome category with this code.")} <Link to={{ page: "outcome" }}>{t("Outcomes")}</Link>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -37,14 +48,15 @@ export function OutcomePage({ id }: { id: string }) {
           {outcome.scope && <p className="small" style={{ marginTop: 6 }}>{outcome.scope}</p>}
         </div>
       </div>
-      <div className="seg tabs-scroll" role="tablist" aria-label={t("Outcomes")} style={{ marginBottom: 16 }}>
+      <nav className="seg tabs-scroll" aria-label={t("Outcomes")} style={{ marginBottom: 16 }}>
         {m.outcomes.map((o) => (
-          <button key={o.id} role="tab" aria-selected={o.id === outcome.id} onClick={() => navigate({ page: "outcome", id: o.id })}
-            title={o.full} style={{ opacity: reportedCats.has(o.id) ? 1 : 0.6 }}>
+          <Link key={o.id} to={{ page: "outcome", id: o.id }} aria-current={o.id === outcome.id ? "page" : undefined}
+            className="seg-link" title={`${o.full} · ${reportedCount(o.id)} ${t("reported")}`}>
             <i className="dot" style={{ background: outcomeVar(m, o.id), marginRight: 6, verticalAlign: "-1px" }} />{nameOf(o)}
-          </button>
+            <span className="xsmall" style={{ marginLeft: 6, color: reportedCats.has(o.id) ? "var(--ink-2)" : "var(--ink-3)" }}>{reportedCount(o.id)}</span>
+          </Link>
         ))}
-      </div>
+      </nav>
 
       {!aggs.length && (
         <div className="card empty">
@@ -170,7 +182,9 @@ export function IndicatorTile({ a, color, lang, yi }: { a: IndicatorAgg; color: 
       <div className="l" title={a.indicator.description}>{nameOf(a.indicator)}</div>
       <div className="v">{compact(a.value)}<small>{unitLabel(a.indicator.unit, lang)}</small></div>
       <div className="d">
-        {delta !== 0 ? <span className={delta > 0 ? "delta-up" : undefined}>{signed(delta, compact)}</span> : "±0"} {t("vs previous year")}
+        {yi > 0
+          ? <>{delta !== 0 ? <span className={delta > 0 ? "delta-up" : undefined}>{signed(delta, compact)}</span> : "±0"} {t("vs previous year")}</>
+          : <>{t("first reported year")}</>}
       </div>
       <Meter value={a.achievement} color={color}
         left={<>{pct(a.achievement)} {t("of target")}</>}
@@ -196,7 +210,7 @@ export function Trajectory({ a, years, year }: { a: IndicatorAgg; years: number[
     <ChartCard title={nameOf(a.indicator)} sub={target ? `${t("Target")}: ${withUnit(target, a.indicator.unit, lang)}` : t("No target")}
       table={{
         cols: [
-          { key: "y", label: "Year", value: (r: { y: number; v: number }) => r.y },
+          { key: "y", label: t("Year"), value: (r: { y: number; v: number }) => r.y },
           { key: "v", label: t("Result"), numeric: true, value: (r: { y: number; v: number }) => Math.round(r.v) },
           { key: "t", label: t("Target"), numeric: true, value: () => target },
         ],
@@ -263,7 +277,7 @@ function Ranking({ aggs, code, onCode, yi, year }: { aggs: IndicatorAgg[]; code:
     <ChartCard title={t("Programme ranking")} sub={`${nameOf(a.indicator)} · ${t("Result and achievement by programme")}`}
       table={{
         cols: [
-          { key: "p", label: t("Programme"), value: (r: (typeof rows)[number]) => r.name },
+          { key: "p", label: t("Programme"), value: (r: (typeof rows)[number]) => r.name, render: (r: (typeof rows)[number]) => <Link to={{ page: "programme", id: r.pid }}>{r.name}</Link> },
           { key: "v", label: t("Result"), numeric: true, value: (r: (typeof rows)[number]) => Math.round(r.value) },
           { key: "t", label: t("Target"), numeric: true, value: (r: (typeof rows)[number]) => r.target },
           { key: "a", label: t("Achievement"), numeric: true, value: (r: (typeof rows)[number]) => (r.ach === null ? null : Math.round(r.ach * 100) / 100) },
@@ -271,7 +285,7 @@ function Ranking({ aggs, code, onCode, yi, year }: { aggs: IndicatorAgg[]; code:
         rows,
       }}
       extra={aggs.length > 1 ? (
-        <div className="seg" style={{ marginRight: 6 }}>
+        <div className="seg scroll-x" style={{ marginRight: 6 }}>
           {aggs.map((x) => (
             <button key={x.indicator.code} aria-pressed={x.indicator.code === code} onClick={() => onCode(x.indicator.code)} title={nameOf(x.indicator)}>
               #{x.indicator.code}

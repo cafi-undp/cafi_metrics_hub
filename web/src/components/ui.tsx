@@ -63,7 +63,7 @@ export function DataTable<R>({
   }, [rows, cols, sort]);
 
   return (
-    <div className="table-wrap" style={maxHeight ? { maxHeight } : undefined}>
+    <div className="table-wrap" tabIndex={0} style={maxHeight ? { maxHeight } : undefined}>
       <table className="data">
         {caption && <caption className="sr-only">{caption}</caption>}
         <thead>
@@ -174,12 +174,16 @@ export function StatusBadge({ status }: { status: Status }) {
 }
 
 /** Fill colour carries progress; track is a lighter step of the same hue. */
-export function Meter({ value, color = "var(--accent)", left, right }: { value: number | null; color?: string; left?: ReactNode; right?: ReactNode }) {
+export function Meter({ value, color = "var(--accent)", left, right, label }: { value: number | null; color?: string; left?: ReactNode; right?: ReactNode; label?: string }) {
   const w = value === null ? 0 : Math.min(1, Math.max(0, value)) * 100;
+  const text = (n: ReactNode) => (typeof n === "string" || typeof n === "number" ? String(n) : "");
+  const name = label ?? [text(left), text(right)].filter(Boolean).join(" · ") ?? t("Achievement");
+  const aria = value === null
+    ? { "aria-hidden": true as const }
+    : { role: "meter" as const, "aria-label": name || t("Achievement"), "aria-valuemin": 0, "aria-valuemax": 100, "aria-valuenow": Math.round(value * 100), "aria-valuetext": pct(value) };
   return (
     <div className="meter">
-      <div className="track" style={{ background: `color-mix(in srgb, ${color} 16%, var(--surface-sunk))` }}
-        role="meter" aria-valuemin={0} aria-valuemax={100} aria-valuenow={value === null ? undefined : Math.round(value * 100)}>
+      <div className="track" style={{ background: `color-mix(in srgb, ${color} 16%, var(--surface-sunk))` }} {...aria}>
         <div className="fill" style={{ width: `${w}%`, background: color }} />
       </div>
       {(left || right) && <div className="row"><span>{left}</span><span>{right}</span></div>}

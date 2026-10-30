@@ -27,6 +27,14 @@ class Dist:
             return np.clip(rng.normal(value, sd, n), 0, None)
         if self.type == "triangular":
             return rng.triangular(self.low, value, self.high, n)
+        if self.type == "beta":
+            # A fraction in (0, 1) with the given mean and standard deviation (method of moments).
+            # Keeps the draw mean at the central value, unlike a clipped normal.
+            m = min(max(value, 1e-3), 1 - 1e-3)
+            sd = self.sd if self.sd is not None else m * (self.rel95 or 0) / 1.96
+            var = min(sd ** 2, m * (1 - m) * 0.95)
+            k = m * (1 - m) / var - 1
+            return rng.beta(m * k, (1 - m) * k, n)
         raise ValueError(f"unknown distribution {self.type}")
 
 

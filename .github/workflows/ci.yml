@@ -48,3 +48,10 @@ jobs:
           npm run typecheck
           npm test
           npx vite build
+
+      - name: Install the smoke-test browser
+        working-directory: web
+        run: npx playwright install --with-deps chromium
+      - name: Smoke-test the built dashboard (console errors, overflow, axe)
+        working-directory: web
+        run: npm run smoke

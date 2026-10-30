@@ -73,6 +73,7 @@ export function Programmes() {
           <p>{list.length} {t("programmes")}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
+          <Link to={{ page: "compare" }} className="chip-btn">{t("Compare")} ⇄</Link>
           <input className="input" type="search" placeholder={t("Search…")} value={q} onChange={(e) => setQ(e.target.value)}
             aria-label={t("Search…")} style={{ width: 220 }} />
           <div className="seg" role="group" aria-label={t("Sort by")}>
