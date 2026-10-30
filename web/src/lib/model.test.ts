@@ -3,7 +3,7 @@ import { aggregate, co2Aggregate, outcomeAchievement, statusOf, valueAt, type In
 import type { DataRecord } from "./types";
 
 const rec = (values: (number | null)[], target: number | null, extra: Partial<DataRecord> = {}): DataRecord => ({
-  id: 0, row: 2, programme: "p", partner: "x", indicator: "01", label: "", target, values, co2: null, ...extra,
+  id: 0, row: 2, programme: "p", partner: "x", indicator: "AGR-01", source: "", type: null, label: "", target, values, co2: null, ...extra,
 });
 
 describe("valueAt", () => {

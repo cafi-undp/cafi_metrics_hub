@@ -1,9 +1,12 @@
-"""Build the dashboard dataset from ProjectData.xlsx.
+"""Build the dashboard dataset from ProjectData.xlsx and the MPTF project list.
 
-    python -m pipeline.build [--input data/ProjectData.xlsx] [--out web/public/data]
+    python -m pipeline.build [--input data/ProjectData.xlsx] [--projects data/MPTF_Projects.xlsx]
+                             [--out web/public/data]
 
-Steps: read the CumulResults sheet -> normalise text -> run quality checks ->
-derive CO2 from config/co2_factors.yml -> write metrics.json and quality.json.
+Steps: read the CumulResults sheet -> normalise text -> re-code indicators to the
+CAFI standard codes (config/reference workbook) -> run quality checks -> derive
+CO2 from config/co2_factors.yml -> link programmes to MPTF projects -> write
+metrics.json and quality.json.
 Exits with status 1 when a blocking (error-level) check fails, so CI never
 publishes a broken dataset.
 """
@@ -22,7 +25,9 @@ from pathlib import Path
 import pandas as pd
 import yaml
 
+from pipeline.portfolio import read_projects
 from pipeline.quality import QualityReport
+from pipeline.reference import load_reference
 
 ROOT = Path(__file__).resolve().parent.parent
 SHEET = "CumulResults"
@@ -41,28 +46,63 @@ COLUMNS = {
     "final target": "target",
 }
 UNIT_ALIASES = {"hectare": "ha", "nombre": "count", "km": "km"}
+# Units in the workbook that are acceptable for a catalogue unit.
+UNIT_COMPATIBLE = {"ha": {"ha"}, "km": {"km"}, "count": {"count"}, "people": {"count"}}
+STANDARD_CODE = re.compile(r"^([A-Z]{3}-\d{2})\b")
+LEGACY_CODE = re.compile(r"^(\d{1,2})\s*[.)]")
 
 
 @dataclass
 class Config:
-    outcomes: list[dict]
+    categories: list[dict]
+    subcategories: list[dict]
     indicators: dict[str, dict]
+    colours: dict[str, int | None]
+    category_fr: dict[str, str]
+    legacy_codes: dict[str, str]
+    label_overrides: dict[str, str]
+    legacy_types: dict[str, str]
+    area_headline: list[str]
     countries: dict[str, dict]
+    programmes: dict[str, list[int]]
+    pass_through: dict[int, str]
     factors: dict[str, list[dict]]
     headline: dict
 
     @classmethod
     def load(cls, config_dir: Path) -> "Config":
-        ind = yaml.safe_load((config_dir / "indicators.yml").read_text(encoding="utf-8"))
-        co2 = yaml.safe_load((config_dir / "co2_factors.yml").read_text(encoding="utf-8"))
-        headline = yaml.safe_load((config_dir / "headline.yml").read_text(encoding="utf-8"))
+        def y(name):
+            path = config_dir / name
+            return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
+        ind, co2 = y("indicators.yml"), y("co2_factors.yml")
+        ref = load_reference(config_dir / ind["reference"])
+        unknown = [c for c in (co2.get("factors") or {}) if c not in ref["indicators"]]
+        if unknown:
+            raise ValueError(f"co2_factors.yml: codes not in the reference workbook: {unknown}")
         return cls(
-            outcomes=ind["outcomes"],
-            indicators={str(k): v for k, v in ind["indicators"].items()},
+            categories=ref["categories"],
+            subcategories=ref["subcategories"],
+            indicators=ref["indicators"],
+            colours=ind.get("category_colours") or {},
+            category_fr=ind.get("category_names_fr") or {},
+            legacy_codes={str(k).zfill(2): v for k, v in (ind.get("legacy_codes") or {}).items()},
+            label_overrides={clean_text(k): v for k, v in (ind.get("label_overrides") or {}).items()},
+            legacy_types={str(k).zfill(2): v for k, v in (ind.get("legacy_types") or {}).items()},
+            area_headline=list(ind.get("area_headline") or []),
             countries=ind["countries"],
+            programmes={clean_text(k): [int(x) for x in (v or [])] for k, v in (y("programmes.yml") or {}).items()},
+            pass_through={int(k): clean_text(v) for k, v in ((y("portfolio.yml") or {}).get("pass_through") or {}).items()},
             factors={str(k): v for k, v in (co2.get("factors") or {}).items()},
-            headline=headline,
+            headline=y("headline.yml"),
         )
+
+    def country_alias(self) -> dict[str, str]:
+        """Any spelling (id, display name or alias), case-folded → country id."""
+        out = {}
+        for cid, c in self.countries.items():
+            for name in [cid, c.get("name", ""), *(c.get("aliases") or [])]:
+                out[clean_text(name).casefold()] = cid
+        return out
 
 
 @dataclass
@@ -148,29 +188,37 @@ def normalise(ds: Dataset, config: Config) -> Dataset:
             canon[s] = spellings.index[0]
     df["partner"] = df["partner"].map(canon)
 
-    # Indicator code is the leading number of the Indicator column.
-    df["code"] = df["indicator"].str.extract(r"^(\d{1,2})")[0].str.zfill(2)
+    # Indicator code: a standard code ("GOV-03 …") or an old number ("06. …")
+    # re-coded through config/indicators.yml.
+    def resolve(ind: str, label: str) -> tuple[str | None, str | None]:
+        if m := STANDARD_CODE.match(ind):
+            return m.group(1), None
+        if m := LEGACY_CODE.match(ind):
+            legacy = m.group(1).zfill(2)
+            return config.label_overrides.get(label) or config.legacy_codes.get(legacy), legacy
+        return None, None
+
+    resolved = [resolve(r.indicator, r.label) for r in df.itertuples()]
+    df["code"] = [c for c, _ in resolved]
+    df["legacy"] = [l for _, l in resolved]
     unknown = df[df["code"].isna() | ~df["code"].isin(config.indicators)]
     if len(unknown):
-        rep.error("indicator-unknown", "Indicator not in catalogue",
-                  "Add the indicator to config/indicators.yml before publishing.",
+        rep.error("indicator-unknown", "Indicator not recognised",
+                  "Use a standard code from the reference workbook (e.g. 'GOV-03 …'), or map the old "
+                  "number in legacy_codes in config/indicators.yml.",
                   [{"row": int(r.row), "programme": r.programme, "indicator": r.indicator}
                    for r in unknown.itertuples()])
 
-    outcome_ids = {o["id"]: o for o in config.outcomes}
-    mism = []
-    for r in df.itertuples():
-        meta = config.indicators.get(r.code)
-        if not meta:
-            continue
-        expected = outcome_ids[meta["outcome"]]["name"]
-        if slugify(r.outcome).rstrip("s") != slugify(expected).rstrip("s"):
-            mism.append({"row": int(r.row), "programme": r.programme, "indicator": r.indicator,
-                         "detail": f"Sheet says '{r.outcome}', catalogue says '{expected}'"})
-    if mism:
-        rep.warning("outcome-mismatch", "Outcome differs from catalogue",
-                    "The catalogue (config/indicators.yml) decides the outcome shown on the dashboard.",
-                    mism)
+    recoded = (df.dropna(subset=["legacy", "code"])
+               .groupby(["legacy", "indicator", "code"]).size().reset_index(name="rows"))
+    if len(recoded):
+        rep.info("recoded", "Old indicator numbers re-coded to standard codes",
+                 "ProjectData.xlsx still uses the old numbering. Each row was re-coded with "
+                 "legacy_codes / label_overrides in config/indicators.yml.",
+                 [{"indicator": r.indicator, "value": r.code,
+                   "detail": f"{r.rows} rows → {r.code} {config.indicators[r.code]['name']}"}
+                  for r in recoded.itertuples()])
+
     case_variants = df.groupby(df["outcome"].str.casefold())["outcome"].nunique()
     for key in case_variants[case_variants > 1].index:
         variants = sorted(df.loc[df["outcome"].str.casefold() == key, "outcome"].unique())
@@ -178,6 +226,8 @@ def normalise(ds: Dataset, config: Config) -> Dataset:
                     "In Power BI these appear as separate outcomes and rows get dropped.",
                     [{"value": " / ".join(variants), "field": "outcome"}])
 
+    alias = config.country_alias()
+    df["country"] = [alias.get(c.casefold(), c) for c in df["country"]]
     unk_country = sorted(set(df["country"]) - set(config.countries))
     if unk_country:
         rep.error("country-unknown", "Country not in catalogue",
@@ -205,15 +255,15 @@ def normalise(ds: Dataset, config: Config) -> Dataset:
         rep.error("negative", "Negative values", "Results and targets cannot be negative.", negatives)
 
     df["unit_norm"] = df["unit"].str.casefold().map(UNIT_ALIASES)
-    unit_mism = [
-        {"row": int(r.row), "programme": r.programme, "indicator": r.indicator,
-         "detail": f"Sheet unit '{r.unit}', catalogue unit '{config.indicators[r.code]['unit']}'"}
-        for r in df.itertuples()
-        if r.code in config.indicators and r.unit_norm != config.indicators[r.code]["unit"]
-    ]
+    unit_mism = []
+    for r in df.itertuples():
+        meta = config.indicators.get(r.code)
+        if meta and meta["unit"] in UNIT_COMPATIBLE and r.unit_norm not in UNIT_COMPATIBLE[meta["unit"]]:
+            unit_mism.append({"row": int(r.row), "programme": r.programme, "indicator": r.indicator,
+                              "detail": f"Sheet unit '{r.unit}', standard unit '{meta['unitLabel']}' ({r.code})"})
     if unit_mism:
-        rep.warning("unit-mismatch", "Unit differs from catalogue",
-                    "The catalogue unit is used on the dashboard.", unit_mism)
+        rep.warning("unit-mismatch", "Unit differs from the standard indicator",
+                    "The standard unit is used on the dashboard.", unit_mism)
     return ds
 
 
@@ -312,7 +362,29 @@ def co2_for(code: str, filled: list[float | None], target: float | None, factors
     }
 
 
-def to_payload(ds: Dataset, config: Config, source_name: str) -> dict:
+def link_projects(programmes: list[dict], projects: list[dict], config: Config, rep: QualityReport) -> None:
+    by_id = {p["id"]: p for p in projects}
+    unlinked, missing = [], []
+    for prog in programmes:
+        ids = config.programmes.get(prog["name"], [])
+        prog["mptf"] = [i for i in ids if i in by_id]
+        for i in ids:
+            if i in by_id:
+                by_id[i]["programmes"].append(prog["id"])
+            else:
+                missing.append({"programme": prog["name"], "value": str(i)})
+        if not ids:
+            unlinked.append({"programme": prog["name"]})
+    if missing:
+        rep.warning("mptf-missing", "MPTF project id not found",
+                    "config/programmes.yml links these programmes to an id that is not in the project list.",
+                    missing)
+    if unlinked and projects:
+        rep.info("mptf-unlinked", "Programmes not linked to an MPTF project",
+                 "Add the MPTF project id in config/programmes.yml to show budget and status.", unlinked)
+
+
+def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dict]) -> dict:
     df, years = ds.frame, ds.years
     df = df[df["code"].isin(config.indicators)]
     dyear = default_year(df, years)
@@ -330,26 +402,34 @@ def to_payload(ds: Dataset, config: Config, source_name: str) -> dict:
             "start": int(grp["start"].min()) if grp["start"].notna().any() else None,
             "end": int(grp["end"].max()) if grp["end"].notna().any() else None,
         })
+    link_projects(programmes, projects, config, ds.report)
     prog_id = {p["name"]: p["id"] for p in programmes}
 
+    # Several old indicators feeding one standard code keep their type (e.g. buildings / bridges).
+    sources = df.groupby("code")["legacy"].nunique()
     records = []
-    for i, r in enumerate(df.itertuples(index=False)):
+    for i in range(len(df)):
         row = df.iloc[i]
         values = [None if pd.isna(row[y]) else float(row[y]) for y in years]
         target = None if pd.isna(row["target"]) else float(row["target"])
+        legacy = row["legacy"]
         records.append({
             "id": i,
             "row": int(row["row"]),
             "programme": prog_id[row["programme"]],
             "partner": partner_id[row["partner"]],
             "indicator": row["code"],
+            "source": row["indicator"],
+            "type": config.legacy_types.get(legacy) if legacy and sources.get(row["code"], 0) > 1 else None,
             "label": row["label"],
             "target": target,
             "values": values,
             "co2": co2_for(row["code"], carry_forward(values), target, config.factors),
         })
 
-    country_ids = sorted(set(df["country"]))
+    reported = set(df["code"])
+    country_ids = set(df["country"]) | {p["country"] for p in projects}
+    order = {cid: i for i, cid in enumerate(config.countries)}
     return {
         "meta": {
             "generatedAt": dt.datetime.now(dt.timezone.utc).isoformat(timespec="seconds"),
@@ -358,21 +438,29 @@ def to_payload(ds: Dataset, config: Config, source_name: str) -> dict:
             "defaultYear": dyear,
             "partialYears": [y for y in years if y > dyear and df[y].notna().any()],
             "recordCount": len(records),
+            "areaIndicators": [c for c in config.area_headline if c in config.indicators],
         },
-        "outcomes": [{"id": o["id"], "name": o["name"], "nameFr": o["name_fr"]} for o in config.outcomes],
+        "outcomes": [
+            {"id": c["code"], "name": c["short"], "nameFr": config.category_fr.get(c["code"], c["short"]),
+             "full": c["name"], "no": c["no"], "scope": c["scope"], "status": c["status"],
+             "slot": config.colours.get(c["code"])}
+            for c in config.categories
+        ],
+        "subcategories": config.subcategories,
         "indicators": [
-            {"code": k, "name": v["name"], "nameFr": v["name_fr"], "outcome": v["outcome"],
-             "unit": v["unit"], "hasCo2": k in config.factors}
-            for k, v in sorted(config.indicators.items())
+            {**{k: v for k, v in ind.items() if k not in ("category", "sort")},
+             "outcome": ind["category"], "hasCo2": code in config.factors, "reported": code in reported}
+            for code, ind in sorted(config.indicators.items(), key=lambda kv: (kv[1]["category"], kv[1]["sort"], kv[0]))
         ],
         "countries": [
             {"id": c, "iso": config.countries[c]["iso"], "name": config.countries[c]["name"],
              "nameFr": config.countries[c]["name_fr"]}
-            for c in country_ids
+            for c in sorted(country_ids, key=lambda c: order.get(c, 99))
         ],
         "partners": [{"id": partner_id[p], "name": p} for p in partners],
         "programmes": programmes,
         "records": records,
+        "projects": projects,
         "co2Factors": [
             {"indicator": code, **{k: c[k] for k in ("component", "rate", "horizon", "formula")}}
             for code, comps in sorted(config.factors.items()) for c in comps
@@ -384,38 +472,44 @@ def to_payload(ds: Dataset, config: Config, source_name: str) -> dict:
     }
 
 
-def build(input_path: Path, out_dir: Path, config_dir: Path) -> int:
+def build(input_path: Path, out_dir: Path, config_dir: Path, projects_path: Path | None = None) -> int:
     config = Config.load(config_dir)
     ds = read_workbook(input_path, config)
     if not ds.report.has_errors:
         normalise(ds, config)
     if not ds.report.has_errors:
         quality_checks(ds, config)
+    projects = []
+    if projects_path and projects_path.exists():
+        projects = read_projects(projects_path, config.country_alias(), ds.report)
+        for p in projects:
+            p["passThrough"] = config.pass_through.get(p["id"])
+
+    payload = None if ds.report.has_errors else to_payload(ds, config, input_path.name, projects)
 
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "quality.json").write_text(
         json.dumps(ds.report.to_json(source=input_path.name), ensure_ascii=False, indent=1),
         encoding="utf-8")
     print(ds.report.summary_text())
-    if ds.report.has_errors:
+    if payload is None:
         print("Build stopped: fix the errors above in the workbook or config.", file=sys.stderr)
         return 1
-
-    payload = to_payload(ds, config, input_path.name)
     (out_dir / "metrics.json").write_text(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
     print(f"Wrote {len(payload['records'])} records for {len(payload['programmes'])} programmes "
-          f"→ {out_dir / 'metrics.json'}")
+          f"and {len(projects)} MPTF projects → {out_dir / 'metrics.json'}")
     return 0
 
 
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--input", type=Path, default=ROOT / "data" / "ProjectData.xlsx")
+    ap.add_argument("--projects", type=Path, default=ROOT / "data" / "MPTF_Projects.xlsx")
     ap.add_argument("--out", type=Path, default=ROOT / "web" / "public" / "data")
     ap.add_argument("--config", type=Path, default=ROOT / "config")
     args = ap.parse_args(argv)
-    return build(args.input, args.out, args.config)
+    return build(args.input, args.out, args.config, args.projects)
 
 
 if __name__ == "__main__":

@@ -1,0 +1,38 @@
+# Results programme (Programme column of ProjectData.xlsx) → MPTF project id(s)
+# in data/MPTF_Projects.xlsx. Links the results to budgets, fund and status.
+#
+# "check" marks a link chosen from partner, country and dates that the
+# programme team should confirm. A programme with no entry, or with [], is
+# shown on the Data quality page as "not linked to an MPTF project".
+
+PIREDD Mongala: [117080]
+PSFD 1: [120055]
+FODECC: [140915]
+Programme Energie: [113546]
+Improved cookstoves Lituka: [140442]
+Programme Foncier: [105381]
+PIREDD Maniema 1: [126783]
+Scaling up investment: [140783]
+PROREP: [130492]
+Land Use Plan Support: [141343]          # check: GIZ land-use planning capacity project, Cameroon
+Grand Mbam: [141300]
+Pacific co-existence between humans and elephants: [141081]
+LUP & Monitoring: [111269]               # check: "GABON AFD-National Planning"
+Urban greening: [133387]
+PI PUDT Kopekoba: [140280]
+PUDT: [134411]
+Agriculture Paysanne en Savane dans le Kongo Central (OAF): [141182]   # check: or 140885 (CAFI, One Acre Fund, 2024–2026)
+FOREX PES: []                            # not found in the MPTF list
+PIREDD Equateur: [117600]
+PIREDD Kasaï O. & Lomami: [140884]
+PIREDD Kwilu: [113547]
+PIREDD Mai-Ndombe: [103850]
+PIREDD Maniema 2: []                     # not found in the MPTF list (126783 is Maniema 1)
+PIREDD Oriental: [107819]
+PIREDD Plateau: [140679]
+PIREDD Sud Ubangi 1: [105031]            # check: "Programme Intégré REDD+ du Sud" (World Bank, 2017–2022)
+PIREDD Sud Ubangi 2: [141419]
+Programme Energie 2: [141417]
+Indigenous peoples: [103851]
+PSFD 2: []                               # check: possibly 141182 (One Acre Fund, 2025–2028)
+Safeguarding & Managing PA: [133386]

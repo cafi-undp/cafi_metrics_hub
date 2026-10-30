@@ -1,18 +1,20 @@
 import type { Metrics } from "./types";
 import type { Tokens } from "./echarts";
 
-/** Outcome colour = its fixed slot (position in config/indicators.yml), never its rank. */
-export function outcomeSlot(m: Metrics, outcomeId: string): number {
-  const i = m.outcomes.findIndex((o) => o.id === outcomeId);
-  return i === -1 ? 0 : i % 6;
+/** Category colour = its configured palette slot (config/indicators.yml), never its rank. */
+export function outcomeSlot(m: Metrics, outcomeId: string): number | null {
+  const s = m.outcomes.find((o) => o.id === outcomeId)?.slot;
+  return s ? s - 1 : null;
 }
 
 export function outcomeVar(m: Metrics, outcomeId: string): string {
-  return `var(--s${outcomeSlot(m, outcomeId) + 1})`;
+  const s = outcomeSlot(m, outcomeId);
+  return s === null ? "var(--neutral)" : `var(--s${s + 1})`;
 }
 
 export function outcomeHex(m: Metrics, t: Tokens, outcomeId: string): string {
-  return t.series[outcomeSlot(m, outcomeId)];
+  const s = outcomeSlot(m, outcomeId);
+  return s === null ? t.neutral : t.series[s];
 }
 
 /** Ink or white for a label set inside a coloured fill, by the fill's luminance. */

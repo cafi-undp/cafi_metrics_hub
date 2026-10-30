@@ -5,6 +5,7 @@ import { CommandPalette, FilterBar, Header } from "./components/Shell";
 import { Overview } from "./pages/Overview";
 import { OutcomePage } from "./pages/OutcomePage";
 import { Programmes } from "./pages/Programmes";
+import { Portfolio } from "./pages/Portfolio";
 import { ProgrammeDetail } from "./pages/ProgrammeDetail";
 import { Climate } from "./pages/Climate";
 import { Quality } from "./pages/Quality";
@@ -31,8 +32,9 @@ export function App() {
   const showFilters = !["quality", "methodology", "programme"].includes(route.page);
   let page;
   switch (route.page) {
-    case "outcome": page = <OutcomePage id={route.id ?? m.outcomes[0].id} />; break;
+    case "outcome": page = <OutcomePage id={route.id ?? (m.outcomes.find((o) => m.indicators.some((i) => i.reported && i.outcome === o.id)) ?? m.outcomes[0]).id} />; break;
     case "programmes": page = <Programmes />; break;
+    case "portfolio": page = <Portfolio />; break;
     case "programme": page = <ProgrammeDetail id={route.id ?? ""} />; break;
     case "climate": page = <Climate />; break;
     case "quality": page = <Quality />; break;

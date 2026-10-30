@@ -1,13 +1,13 @@
+import { useState } from "react";
 import { useApp } from "../lib/state";
-import { nameOf, t } from "../lib/i18n";
-import { AREA_INDICATORS } from "../lib/model";
-import { outcomeVar } from "../lib/colors";
-import { DataTable, type Column } from "../components/ui";
-import type { Indicator } from "../lib/types";
+import { t } from "../lib/i18n";
+import { CatalogueTable } from "./OutcomePage";
 
 export function Methodology() {
   const { m, lang } = useApp();
   const fr = lang === "fr";
+  const [only, setOnly] = useState<"all" | "reported">("all");
+  const [tier, setTier] = useState("");
   return (
     <>
       <div className="page-head">
@@ -26,7 +26,7 @@ export function Methodology() {
                 <li>Si une année n'est pas encore déclarée, la dernière valeur déclarée est reprise.</li>
                 <li><b>Taux d'atteinte</b> = Σ résultats / Σ cibles, sur les lignes qui ont une cible. Le taux d'un résultat est la moyenne de ses indicateurs.</li>
                 <li>Les valeurs d'unités différentes (ha, nombre, km) ne sont jamais additionnées.</li>
-                <li>« Hectares plantés, restaurés ou protégés » regroupe les indicateurs {AREA_INDICATORS.join(", ")} ; la superficie couverte par des plans (08) est exclue car elle recoupe les autres.</li>
+                <li>« Hectares plantés, restaurés ou protégés » regroupe les indicateurs {m.meta.areaIndicators.join(", ")} ; la superficie sous plans d’aménagement (LUT-02) est exclue car elle recoupe les autres.</li>
                 <li><b>Statut</b> : le taux d'atteinte est comparé à la part de la période du programme déjà écoulée (≥ 90 % de l'attendu : en bonne voie ; ≥ 50 % : en retard ; sinon hors trajectoire).</li>
               </>
             ) : (
@@ -35,7 +35,7 @@ export function Methodology() {
                 <li>When a year has not been reported yet, the latest reported value is carried forward.</li>
                 <li><b>Achievement</b> = Σ results / Σ targets, over rows that have a target. An outcome's achievement is the average of its indicators.</li>
                 <li>Values in different units (ha, count, km) are never added together.</li>
-                <li>"Hectares planted, restored or protected" covers indicators {AREA_INDICATORS.join(", ")}; land covered by land-use plans (08) is left out because it overlaps the others.</li>
+                <li>"Hectares planted, restored or protected" covers indicators {m.meta.areaIndicators.join(", ")}; area under land-use plans (LUT-02) is left out because it overlaps the others.</li>
                 <li><b>Status</b> compares achievement with the share of the programme period that has elapsed (≥ 90 % of expected: on track; ≥ 50 %: behind; otherwise off track).</li>
               </>
             )}
@@ -63,15 +63,34 @@ export function Methodology() {
         </section>
       </div>
       <section className="section">
-        <div className="section-head"><h2>{t("Indicators")}</h2><span className="muted small">config/indicators.yml</span></div>
-        <DataTable rows={m.indicators} cols={[
-          { key: "c", label: "#", value: (i) => i.code },
-          { key: "n", label: t("Indicator"), value: (i) => nameOf(i) },
-          { key: "o", label: t("Outcomes"), value: (i) => nameOf(m.outcomes.find((o) => o.id === i.outcome)!),
-            render: (i) => <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}><i className="dot" style={{ background: outcomeVar(m, i.outcome) }} />{nameOf(m.outcomes.find((o) => o.id === i.outcome)!)}</span> },
-          { key: "u", label: "Unit", value: (i) => i.unit },
-          { key: "co2", label: "CO₂", value: (i) => (i.hasCo2 ? "✓" : "") },
-        ] as Column<Indicator>[]} />
+        <div className="section-head">
+          <div>
+            <h2>{t("Standard indicators")}</h2>
+            <p className="muted small">
+              {m.indicators.filter((i) => i.reported).length} / {m.indicators.length} {t("standard indicators reported")} ·
+              {" "}config/reference/CAFI_Standard_Indicators_MetricsHub.xlsx
+            </p>
+          </div>
+          <div style={{ display: "flex", gap: 8, flexWrap: "wrap" }}>
+            <div className="seg" role="group" aria-label={t("Reported")}>
+              {(["all", "reported"] as const).map((k) => (
+                <button key={k} aria-pressed={only === k} onClick={() => setOnly(k)}>{k === "all" ? t("All") : t("Reported")}</button>
+              ))}
+            </div>
+            <div className="seg" role="group" aria-label={t("Tier")}>
+              {["", "T1", "T2", "T3"].map((k) => (
+                <button key={k} aria-pressed={tier === k} onClick={() => setTier(k)}>{k || t("All")}</button>
+              ))}
+            </div>
+          </div>
+        </div>
+        <CatalogueTable showCategory
+          rows={m.indicators.filter((i) => (only === "all" || i.reported) && (!tier || i.tier === tier))} />
+        <p className="xsmall muted" style={{ marginTop: 8 }}>
+          {fr
+            ? "T1 = socle commun (tous les projets) · T2 = indicateur phare thématique · T3 = complémentaire. Les données de ProjectData.xlsx utilisent encore l’ancienne numérotation (01–14) ; elles sont recodées via config/indicators.yml."
+            : "T1 = universal core (every project) · T2 = thematic headline · T3 = supplementary. ProjectData.xlsx still uses the old numbering (01–14); rows are re-coded through config/indicators.yml."}
+        </p>
       </section>
     </>
   );

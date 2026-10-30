@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { useApp } from "../lib/state";
 import { nameOf, t } from "../lib/i18n";
 import { co2Aggregate, indicatorAggs, outcomeAchievement, statusOf, valueAt, yearIndex } from "../lib/model";
-import { num, pct, tco2 } from "../lib/format";
+import { compact, num, pct, tco2 } from "../lib/format";
 import { outcomeVar } from "../lib/colors";
 import { Link } from "../components/Shell";
 import { DataTable, Meter, MiniMeter, StatusBadge, type Column } from "../components/ui";
@@ -26,6 +26,7 @@ export function ProgrammeDetail({ id }: { id: string }) {
   const co2 = co2Aggregate(recs, yi);
   const span = p.start && p.end ? p.end - p.start + 1 : null;
   const elapsed = span && p.start ? Math.min(span, Math.max(0, filters.year - p.start + 1)) : null;
+  const projects = m.projects.filter((x) => p.mptf.includes(x.id));
   const mainOutcome = aggs[0]?.indicator.outcome ?? m.outcomes[0].id;
 
   return (
@@ -70,9 +71,35 @@ export function ProgrammeDetail({ id }: { id: string }) {
       </div>
 
       <section className="section">
+        <div className="section-head"><h2>{t("Funding (MPTF)")}</h2></div>
+        {projects.length ? (
+          <div className="grid g-2">
+            {projects.map((pr) => (
+              <div className="card" key={pr.id}>
+                <div className="xsmall muted">MPTF {pr.id} · {pr.fund}{pr.type ? ` · ${pr.type}` : ""}</div>
+                <h3 style={{ fontSize: 15, marginTop: 4 }}>{pr.name}</h3>
+                <div style={{ display: "flex", gap: 6, flexWrap: "wrap", marginTop: 8 }}>
+                  <span className="status"><span style={{ color: pr.status?.toLowerCase().startsWith("on going") ? "var(--good)" : "var(--neutral)", display: "inline-flex" }}>●</span>{pr.status}</span>
+                  <span className="pill num">{pr.start?.slice(0, 4)}–{pr.end?.slice(0, 4)}</span>
+                  {pr.orgs.map((o) => <span className="pill" key={o}>{o}</span>)}
+                </div>
+                <div className="grid g-3" style={{ marginTop: 12, gap: 8 }}>
+                  <div><div className="xsmall muted">{t("Approved budget")}</div><b>${compact(pr.approved)}</b></div>
+                  <div><div className="xsmall muted">{t("Transferred")}</div><b>${compact(pr.transferred)}</b></div>
+                  <div><div className="xsmall muted">{t("Spent")}</div><b>${compact(pr.expenditure)}</b></div>
+                </div>
+                <Meter value={pr.transferred ? Math.min(1, pr.expenditure / pr.transferred) : null} color="var(--accent)"
+                  left={<>{pct(pr.transferred ? pr.expenditure / pr.transferred : null)} {t("of transfers")}</>} />
+              </div>
+            ))}
+          </div>
+        ) : <div className="card small muted">{t("Not linked to an MPTF project yet (config/programmes.yml).")}</div>}
+      </section>
+
+      <section className="section">
         <div className="section-head"><h2>{t("Indicators")}</h2></div>
         <div className="grid g-3">
-          {aggs.map((a) => <IndicatorTile key={a.indicator.code} a={a} color={outcomeVar(m, a.indicator.outcome)} lang={lang} />)}
+          {aggs.map((a) => <IndicatorTile key={a.indicator.code} a={a} color={outcomeVar(m, a.indicator.outcome)} lang={lang} yi={yi} />)}
         </div>
       </section>
 

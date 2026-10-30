@@ -1,59 +1,105 @@
-# Indicator catalogue — the single source of truth for how each indicator is
-# labelled, grouped and measured on the dashboard.
+# How the dashboard reads indicators.
 #
-# The pipeline matches rows of ProjectData.xlsx on the two-digit code at the
-# start of the "Indicator" column (e.g. "06. Number of local development
-# committees" -> "06"). A code that is not listed here stops the build, so a
-# new indicator must be added below before it can be published.
-#
-#   outcome : one of the ids under `outcomes`
-#   unit    : ha | count | km   (values with different units are never summed)
+# The indicator catalogue itself (67 standard indicators, 9 categories,
+# sub-categories, tiers, units, aggregation rules, EN/FR short names) is the
+# CAFI reference workbook below — update that file and the site follows.
+reference: reference/CAFI_Standard_Indicators_MetricsHub.xlsx
 
-outcomes:
-  # Listed in chart-colour order: slot 1 blue, 2 orange, 3 aqua, 4 yellow,
-  # 5 magenta, 6 green (a colour-blind-safe sequence — keep the order).
-  - id: land-management
-    name: Land management
-    name_fr: Aménagement du territoire
-  - id: energy
-    name: Energy
-    name_fr: Énergie
-  - id: forestry
-    name: Forestry
-    name_fr: Foresterie
-  - id: agriculture
-    name: Agriculture
-    name_fr: Agriculture
-  - id: infrastructure
-    name: Infrastructure
-    name_fr: Infrastructures
-  - id: conservation
-    name: Conservation
-    name_fr: Conservation
+# French names for the categories (the reference workbook only has English).
+category_names_fr:
+  GOV: Gouvernance et politiques
+  FOR: Forêts et biodiversité
+  FIN: Finance durable et PSE
+  LUT: Aménagement du territoire et foncier
+  AGR: Agriculture durable
+  ENR: Énergie et cuisson propre
+  CLM: Climat, carbone et MNV
+  INC: Démographie et inclusion
+  PPL: Populations et moyens de subsistance
 
-indicators:
-  "01": { name: Subsistence agriculture, name_fr: Agriculture vivrière, outcome: agriculture, unit: ha }
-  "02": { name: Perennial crop plantations, name_fr: Cultures pérennes, outcome: agriculture, unit: ha }
-  "03": { name: Agroforestry & wood-energy plantations, name_fr: Agroforesterie et bois-énergie, outcome: energy, unit: ha }
-  "04": { name: Savannah set aside for regeneration, name_fr: Savanes mises en défens, outcome: forestry, unit: ha }
-  "05": { name: Clean cooking solutions, name_fr: Foyers améliorés, outcome: energy, unit: count }
-  "06": { name: Local development committees, name_fr: Comités locaux de développement, outcome: land-management, unit: count }
-  "07": { name: Local land-use plans, name_fr: Plans locaux d'aménagement, outcome: land-management, unit: count }
-  "08": { name: Land covered by land-use plans, name_fr: Superficie couverte par des plans, outcome: land-management, unit: ha }
-  "09": { name: Community forest concessions, name_fr: Concessions forestières communautaires, outcome: forestry, unit: ha }
-  "10": { name: Buildings constructed or rehabilitated, name_fr: Bâtiments construits ou réhabilités, outcome: infrastructure, unit: count }
-  "11": { name: Roads rehabilitated and maintained, name_fr: Routes réhabilitées et entretenues, outcome: infrastructure, unit: km }
-  "12": { name: Bridges and culverts built, name_fr: Ponts et dalots construits, outcome: infrastructure, unit: count }
-  "13": { name: Forest conservation, name_fr: Conservation forestière, outcome: conservation, unit: ha }
-  "14": { name: Protected plantations, name_fr: Plantations protégées, outcome: agriculture, unit: ha }
+# Chart colour per category = a slot of the validated colour-blind-safe palette
+# (1 blue, 2 orange, 3 aqua, 4 yellow, 5 magenta, 6 green, 7 violet, 8 red).
+# This assignment passes the palette checks in light and dark mode for the
+# categories in their standard order. INC has no slot (shown in neutral grey)
+# because only eight hues can be told apart reliably.
+category_colours:
+  GOV: 2
+  FOR: 3
+  FIN: 8
+  LUT: 1
+  AGR: 6
+  ENR: 4
+  CLM: 7
+  PPL: 5
+  INC: null
 
-# Country names as written in the "Pays" column -> ISO 3166-1 numeric code
-# (used to draw the map). "Regional" programmes have no single country.
+# ProjectData.xlsx still uses the old numbering ("06. Number of local
+# development committees"). Each old code is re-coded to a standard code here.
+# Rows can also be entered directly with a standard code ("GOV-03 …").
+legacy_codes:
+  "01": AGR-01   # Subsistence agriculture (ha)            → improved food crops (framework AG.2)
+  "02": AGR-02   # Perennial crops plantations (ha)        → deforestation-free perennial crops (AG.3a)
+  "03": AGR-03   # Agroforestry & wood-energy plantations  → agroforestry (AG.3b) — see overrides
+  "04": FOR-01   # Savannah left aside for regeneration    → natural regeneration (E.1)
+  "05": ENR-01   # Clean cooking solutions                 → clean cooking distributed (E.3b)
+  "06": GOV-03   # Local development committees            → local governance structures (G.1)
+  "07": LUT-01   # Local land-use plans                    → land-use plans validated (AT.1)
+  "08": LUT-02   # Land equipped with land-use plans (ha)  → area under land-use plans (AT.2)
+  "09": FOR-03   # Community forest concessions (ha)       → sustainable forest management (FOR.4)
+  "10": PPL-03   # Buildings constructed or rehabilitated  → rural infrastructure (AT.7a), type "Buildings"
+  "11": PPL-04   # Km of roads rehabilitated               → rural roads (AT.7b)
+  "12": PPL-03   # Bridges and/or culverts                 → rural infrastructure (AT.7a), type "Bridges & culverts"
+  "13": FOR-04   # Forest conservation (ha)                → forest area under conservation (FOR.5)
+  "14": FOR-13   # Protected plantations (elephant fences) → cropland protected by electric fences
+
+# Sub-indicators (the "Indicator synonym" column) that belong to a different
+# standard indicator than the rest of their old code.
+label_overrides:
+  "Superficie Espaces-Dégradés reboisés sous PSE": FOR-02     # reforestation = tree plantations
+  "Superficie Droits Fonciers Communautaires": LUT-03         # community land rights = tenure security
+
+# Type label shown when several old indicators feed one standard indicator.
+legacy_types:
+  "10": Buildings
+  "12": Bridges & culverts
+
+# Indicators added up for the headline "hectares planted, restored or
+# protected". Each forest or tree-cover hectare is counted once (FOR/AGR);
+# LUT-02 (area under plans) overlaps them and FOR-05 is a subset of FOR-03.
+area_headline: [FOR-01, FOR-02, FOR-03, FOR-04, AGR-01, AGR-02, AGR-03]
+
+# Country names as written in ProjectData.xlsx ("Pays") and in the MPTF
+# project list ("Country"), with the ISO 3166-1 numeric code for the map.
 countries:
-  DRC: { iso: "180", name: DR Congo, name_fr: RD Congo }
-  Cameroon: { iso: "120", name: Cameroon, name_fr: Cameroun }
-  Congo: { iso: "178", name: Republic of Congo, name_fr: République du Congo }
-  Gabon: { iso: "266", name: Gabon, name_fr: Gabon }
-  Central African Republic: { iso: "140", name: Central African Republic, name_fr: République centrafricaine }
-  Equatorial Guinea: { iso: "226", name: Equatorial Guinea, name_fr: Guinée équatoriale }
-  Regional: { iso: null, name: Regional, name_fr: Régional }
+  DRC:
+    iso: "180"
+    name: DR Congo
+    name_fr: RD Congo
+    aliases: ["Congo (the Democratic Republic of the)"]
+  Cameroon:
+    iso: "120"
+    name: Cameroon
+    name_fr: Cameroun
+  Congo:
+    iso: "178"
+    name: Republic of Congo
+    name_fr: République du Congo
+    aliases: ["Congo (the)"]
+  Gabon:
+    iso: "266"
+    name: Gabon
+    name_fr: Gabon
+  CAR:
+    iso: "140"
+    name: Central African Republic
+    name_fr: République centrafricaine
+    aliases: ["Central African Republic (the)", "Central African Republic"]
+  Equatorial Guinea:
+    iso: "226"
+    name: Equatorial Guinea
+    name_fr: Guinée équatoriale
+  Regional:
+    iso: null
+    name: Regional / global
+    name_fr: Régional / global
+    aliases: ["Global and Interregional"]

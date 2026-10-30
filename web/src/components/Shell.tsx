@@ -9,8 +9,9 @@ import {
 
 const PAGES: { route: Route; label: string }[] = [
   { route: { page: "" }, label: "Overview" },
-  { route: { page: "outcome", id: "land-management" }, label: "Outcomes" },
+  { route: { page: "outcome" }, label: "Outcomes" },
   { route: { page: "programmes" }, label: "Programmes" },
+  { route: { page: "portfolio" }, label: "Portfolio" },
   { route: { page: "climate" }, label: "Climate impact" },
   { route: { page: "quality" }, label: "Data quality" },
   { route: { page: "methodology" }, label: "Methodology" },
@@ -224,8 +225,12 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       run: () => navigate({ page: "programme", id: p.id }),
     })),
     ...m.indicators.map((i) => ({
-      group: t("Indicators"), label: nameOf(i), meta: i.code, color: outcomeVar(m, i.outcome),
+      group: t("Indicators"), label: nameOf(i), meta: `${i.code} · ${i.tier}`, color: outcomeVar(m, i.outcome),
       run: () => navigate({ page: "outcome", id: i.outcome }),
+    })),
+    ...m.projects.map((p) => ({
+      group: t("Portfolio"), label: p.name, meta: `MPTF ${p.id}`,
+      run: () => navigate(p.programmes.length === 1 ? { page: "programme", id: p.programmes[0] } : { page: "portfolio" }),
     })),
     ...m.countries.map((c) => ({
       group: t("Countries"), label: `${t("Filter by")} ${nameOf(c)}`, run: () => setFilters({ countries: [c.id] }),

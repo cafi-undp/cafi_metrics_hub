@@ -3,10 +3,11 @@ import { useApp } from "../lib/state";
 import { useFiltered } from "../lib/hooks";
 import { nameOf, t } from "../lib/i18n";
 import { byKey, indicatorAggs, outcomeAchievement, statusOf, valueAt, type IndicatorAgg } from "../lib/model";
-import { compact, num, pct, signed, withUnit } from "../lib/format";
+import { compact, num, pct, signed, unitLabel, withUnit } from "../lib/format";
 import { outcomeHex, outcomeVar } from "../lib/colors";
 import { axisBase, esc, tipRow, tipTitle, tooltipBase } from "../lib/echarts";
 import { Chart } from "../components/Chart";
+import type { Indicator } from "../lib/types";
 import { ChartCard, DataTable, Legend, Meter, MiniMeter, STATUS_META, StatusBadge, type Column } from "../components/ui";
 
 export function OutcomePage({ id }: { id: string }) {
@@ -19,6 +20,8 @@ export function OutcomePage({ id }: { id: string }) {
   const achievement = outcomeAchievement(aggs);
   const [rankInd, setRankInd] = useState<string | null>(null);
   const rankCode = aggs.find((a) => a.indicator.code === rankInd)?.indicator.code ?? aggs[0]?.indicator.code;
+  const catalogue = m.indicators.filter((i) => i.outcome === outcome.id);
+  const reportedCats = new Set(m.indicators.filter((i) => i.reported).map((i) => i.outcome));
 
   return (
     <>
@@ -26,21 +29,31 @@ export function OutcomePage({ id }: { id: string }) {
         <div>
           <div className="eyebrow"><i className="dot" style={{ background: color }} />{t("Outcomes")} · {t("As of")} {year}</div>
           <h1>{nameOf(outcome)}</h1>
-          <p>{aggs.length} {t("indicators")} · {new Set(recs.map((r) => r.programme)).size} {t("programmes")} · {t("Achievement")} <b>{pct(achievement)}</b></p>
-        </div>
-        <div className="seg" role="tablist" aria-label={t("Outcomes")}>
-          {m.outcomes.map((o) => (
-            <button key={o.id} role="tab" aria-selected={o.id === outcome.id} onClick={() => navigate({ page: "outcome", id: o.id })}>
-              <i className="dot" style={{ background: outcomeVar(m, o.id), marginRight: 6, verticalAlign: "-1px" }} />{nameOf(o)}
-            </button>
-          ))}
+          <p>
+            <span className="pill" style={{ marginRight: 8 }}>{outcome.id} · {t("Outcome")} {outcome.no}</span>
+            {aggs.length} / {catalogue.length} {t("standard indicators reported")} · {new Set(recs.map((r) => r.programme)).size} {t("programmes")}
+            {achievement !== null && <> · {t("Achievement")} <b>{pct(achievement)}</b></>}
+          </p>
+          {outcome.scope && <p className="small" style={{ marginTop: 6 }}>{outcome.scope}</p>}
         </div>
       </div>
+      <div className="seg tabs-scroll" role="tablist" aria-label={t("Outcomes")} style={{ marginBottom: 16 }}>
+        {m.outcomes.map((o) => (
+          <button key={o.id} role="tab" aria-selected={o.id === outcome.id} onClick={() => navigate({ page: "outcome", id: o.id })}
+            title={o.full} style={{ opacity: reportedCats.has(o.id) ? 1 : 0.6 }}>
+            <i className="dot" style={{ background: outcomeVar(m, o.id), marginRight: 6, verticalAlign: "-1px" }} />{nameOf(o)}
+          </button>
+        ))}
+      </div>
 
-      {!aggs.length && <div className="card empty">{t("No data for the current filters")}</div>}
+      {!aggs.length && (
+        <div className="card empty">
+          {reportedCats.has(outcome.id) ? t("No data for the current filters") : t("No results reported yet for this category.")}
+        </div>
+      )}
 
       <div className="grid g-3">
-        {aggs.map((a) => <IndicatorTile key={a.indicator.code} a={a} color={color} lang={lang} />)}
+        {aggs.map((a) => <IndicatorTile key={a.indicator.code} a={a} color={color} lang={lang} yi={yi} />)}
       </div>
 
       {aggs.length > 0 && (
@@ -84,24 +97,77 @@ export function OutcomePage({ id }: { id: string }) {
           />
         </section>
       )}
+
+      <section className="section">
+        <div className="section-head">
+          <h2>{t("Standard indicators")}</h2>
+          <span className="muted small">{catalogue.filter((i) => i.reported).length} / {catalogue.length} {t("reported")}</span>
+        </div>
+        <CatalogueTable rows={catalogue} />
+      </section>
     </>
   );
 }
 
-export function IndicatorTile({ a, color, lang }: { a: IndicatorAgg; color: string; lang: string }) {
+/** The standard indicators of one or more categories, with tier, unit and whether results are reported. */
+export function CatalogueTable({ rows, showCategory = false }: { rows: Indicator[]; showCategory?: boolean }) {
+  const { m, navigate } = useApp();
+  const sub = new Map(m.subcategories.map((s) => [s.code, s.name]));
+  return (
+    <DataTable rows={rows} maxHeight={560}
+      onRowClick={(i) => { if (i.reported) navigate({ page: "outcome", id: i.outcome }); }}
+      cols={[
+        { key: "c", label: t("Code"), value: (i) => i.code, width: 80 },
+        { key: "n", label: t("Indicator"), value: (i) => nameOf(i),
+          render: (i) => <span title={i.description}>{nameOf(i)}</span> },
+        ...(showCategory ? [{
+          key: "o", label: t("Category"), value: (i: Indicator) => nameOf(m.outcomes.find((o) => o.id === i.outcome)!),
+          render: (i: Indicator) => (
+            <span style={{ display: "inline-flex", gap: 6, alignItems: "center" }}>
+              <i className="dot" style={{ background: outcomeVar(m, i.outcome) }} />{nameOf(m.outcomes.find((o) => o.id === i.outcome)!)}
+            </span>
+          ),
+        }] : []),
+        { key: "s", label: t("Sub-category"), value: (i) => sub.get(i.subcategory) ?? i.subcategory },
+        { key: "t", label: t("Tier"), value: (i) => i.tier, render: (i) => <TierBadge tier={i.tier} /> },
+        { key: "u", label: t("Unit"), value: (i) => i.unitLabel },
+        { key: "a", label: t("Aggregation"), value: (i) => i.aggregation },
+        { key: "r", label: t("Reported"), value: (i) => (i.reported ? 1 : 0),
+          render: (i) => (i.reported ? <span className="status"><span style={{ color: "var(--good)", display: "inline-flex" }}>●</span>{t("Yes")}</span> : <span className="muted">–</span>) },
+      ] as Column<Indicator>[]} />
+  );
+}
+
+export function TierBadge({ tier }: { tier: string }) {
+  const label = tier === "T1" ? t("Core") : tier === "T2" ? t("Headline") : t("Supplementary");
+  return <span className={`pill tier tier-${tier.toLowerCase()}`} title={label}>{tier} · {label}</span>;
+}
+
+export function IndicatorTile({ a, color, lang, yi }: { a: IndicatorAgg; color: string; lang: string; yi: number }) {
+  const { m } = useApp();
   const delta = a.value - a.previous;
+  const sub = m.subcategories.find((s) => s.code === a.indicator.subcategory)?.name;
+  // Several old indicators can feed one standard code (e.g. buildings and bridges): show the split.
+  const types = [...byKey(a.records.filter((r) => r.type), (r) => r.type!).entries()]
+    .map(([type, rs]) => [type, rs.reduce((s, r) => s + (valueAt(r.values, yi) ?? 0), 0)] as const);
   return (
     <div className="card tile">
-      <div className="l" style={{ display: "flex", justifyContent: "space-between", gap: 8 }}>
-        <span>{nameOf(a.indicator)}</span><span className="muted xsmall">#{a.indicator.code}</span>
+      <div className="xsmall muted" style={{ display: "flex", justifyContent: "space-between", gap: 8, marginBottom: 2 }}>
+        <span>{a.indicator.code}{sub ? ` · ${sub}` : ""}</span><TierBadge tier={a.indicator.tier} />
       </div>
-      <div className="v">{compact(a.value)}<small>{a.indicator.unit === "count" ? "" : a.indicator.unit}</small></div>
+      <div className="l" title={a.indicator.description}>{nameOf(a.indicator)}</div>
+      <div className="v">{compact(a.value)}<small>{unitLabel(a.indicator.unit, lang)}</small></div>
       <div className="d">
         {delta !== 0 ? <span className={delta > 0 ? "delta-up" : undefined}>{signed(delta, compact)}</span> : "±0"} {t("vs previous year")}
       </div>
       <Meter value={a.achievement} color={color}
         left={<>{pct(a.achievement)} {t("of target")}</>}
         right={<>{t("target")} {withUnit(a.targeted, a.indicator.unit, lang, true)}</>} />
+      {types.length > 1 && (
+        <div className="xsmall ink-2" style={{ marginTop: 8 }}>
+          {types.map(([type, v]) => `${t(type)} ${compact(v)}`).join(" · ")}
+        </div>
+      )}
       <div className="xsmall muted" style={{ marginTop: 8 }}>
         {a.programmes} {t("programmes")} · {a.targetedRows}/{a.rows} {t("rows with a target")}
       </div>
@@ -113,7 +179,7 @@ export function Trajectory({ a, years, year }: { a: IndicatorAgg; years: number[
   const { m, lang } = useApp();
   const values = years.map((_, i) => a.records.reduce((s, r) => s + (valueAt(r.values, i) ?? 0), 0));
   const target = a.target;
-  const unit = a.indicator.unit === "count" ? "" : ` ${a.indicator.unit}`;
+  const unit = unitLabel(a.indicator.unit, lang) ? ` ${unitLabel(a.indicator.unit, lang)}` : "";
   return (
     <ChartCard title={nameOf(a.indicator)} sub={target ? `${t("Target")}: ${withUnit(target, a.indicator.unit, lang)}` : t("No target")}
       table={{
