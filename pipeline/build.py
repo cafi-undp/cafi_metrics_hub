@@ -5,8 +5,9 @@
 
 Steps: read the CumulResults sheet -> normalise text -> re-code indicators to the
 CAFI standard codes (config/reference workbook) -> run quality checks -> derive
-CO2 from config/co2_factors.yml -> link programmes to MPTF projects -> write
-metrics.json and quality.json.
+CO2 from config/co2_factors.yml -> link programmes to MPTF projects and the
+standard indicators each project is expected to report -> write metrics.json
+and quality.json.
 Exits with status 1 when a blocking (error-level) check fails, so CI never
 publishes a broken dataset.
 """
@@ -27,7 +28,7 @@ import yaml
 
 from pipeline.portfolio import read_projects
 from pipeline.quality import QualityReport
-from pipeline.reference import load_reference
+from pipeline.reference import load_project_reference, load_reference
 
 ROOT = Path(__file__).resolve().parent.parent
 SHEET = "CumulResults"
@@ -68,6 +69,9 @@ class Config:
     pass_through: dict[int, str]
     factors: dict[str, list[dict]]
     headline: dict
+    activities: list[dict]
+    project_meta: dict[int, dict]
+    project_unknown: list[dict]
 
     @classmethod
     def load(cls, config_dir: Path) -> "Config":
@@ -76,6 +80,7 @@ class Config:
             return yaml.safe_load(path.read_text(encoding="utf-8")) if path.exists() else {}
         ind, co2 = y("indicators.yml"), y("co2_factors.yml")
         ref = load_reference(config_dir / ind["reference"])
+        proj = load_project_reference(config_dir / ind["reference"], set(ref["indicators"]))
         unknown = [c for c in (co2.get("factors") or {}) if c not in ref["indicators"]]
         if unknown:
             raise ValueError(f"co2_factors.yml: codes not in the reference workbook: {unknown}")
@@ -94,6 +99,9 @@ class Config:
             pass_through={int(k): clean_text(v) for k, v in ((y("portfolio.yml") or {}).get("pass_through") or {}).items()},
             factors={str(k): v for k, v in (co2.get("factors") or {}).items()},
             headline=y("headline.yml"),
+            activities=proj["activities"],
+            project_meta=proj["projects"],
+            project_unknown=proj["unknown_indicators"],
         )
 
     def country_alias(self) -> dict[str, str]:
@@ -384,6 +392,74 @@ def link_projects(programmes: list[dict], projects: list[dict], config: Config, 
                  "Add the MPTF project id in config/programmes.yml to show budget and status.", unlinked)
 
 
+PROJECT_DEFAULTS = {"short": "", "projectType": None, "pes": False, "activities": [],
+                    "confidence": None, "note": "", "indicators": []}
+
+
+def classify_projects(projects: list[dict], config: Config, rep: QualityReport) -> None:
+    """Attach type, activities and expected indicators (reference workbook, tabs 12-14)."""
+    seen = set()
+    for p in projects:
+        meta = config.project_meta.get(p["id"])
+        p.update({**PROJECT_DEFAULTS, **(meta or {})})
+        if meta:
+            seen.add(p["id"])
+    if not config.project_meta:
+        return
+    unknown = sorted(set(config.project_meta) - seen)
+    if unknown:
+        rep.info("project-ref-unknown", "Project in the reference workbook but not in the MPTF list",
+                 "13_Projects lists an id that the MPTF export does not have. Check the id or refresh the export.",
+                 [{"value": str(i), "detail": config.project_meta[i]["short"]} for i in unknown])
+    unclassified = [p for p in projects if p["id"] not in seen and not p.get("passThrough")]
+    if unclassified:
+        rep.info("project-unclassified", "MPTF project not classified in the reference workbook",
+                 "Add the project to 13_Projects (type, activities) so its expected indicators are known.",
+                 [{"value": str(p["id"]), "detail": p["name"]} for p in unclassified])
+    if config.project_unknown:
+        rep.warning("project-ref-indicator", "Project ↔ indicator link uses an unknown code",
+                    "14_ProjectIndicators refers to a code that is not in 03_Indicators. The link was ignored.",
+                    config.project_unknown)
+
+
+def coverage_checks(df: pd.DataFrame, programmes: list[dict], projects: list[dict], config: Config,
+                    rep: QualityReport) -> None:
+    """Compare what a programme reports with what its MPTF project(s) are expected to report."""
+    by_id = {p["id"]: p for p in projects}
+    reported_by_prog = df.groupby("programme")["code"].agg(lambda s: set(s))
+    missing, extra = [], []
+    for prog in programmes:
+        linked = [by_id[i] for i in prog["mptf"] if by_id[i]["indicators"]]
+        if not linked:
+            continue
+        expected = {}
+        for pr in linked:
+            for link in pr["indicators"]:
+                # keep the strongest requirement across linked projects
+                rank = {"mandatory": 0, "required": 1, "optional": 2}
+                if link["code"] not in expected or rank[link["requirement"]] < rank[expected[link["code"]]]:
+                    expected[link["code"]] = link["requirement"]
+        reported = reported_by_prog.get(prog["name"], set())
+        for code, req in sorted(expected.items()):
+            if req != "optional" and code not in reported:
+                missing.append({"programme": prog["name"], "indicator": code,
+                                "detail": f"{config.indicators[code]['name']} — {req}"})
+        for code in sorted(reported - set(expected)):
+            extra.append({"programme": prog["name"], "indicator": code,
+                          "detail": f"{config.indicators[code]['name']} — not expected for "
+                                    f"{', '.join(pr['short'] or str(pr['id']) for pr in linked)}"})
+    if missing:
+        rep.info("coverage-missing", "Expected standard indicators not yet reported",
+                 "Indicators that are mandatory for the project's type, or required by one of its activities "
+                 "(reference workbook, 14_ProjectIndicators), with no row yet in ProjectData.xlsx.",
+                 missing)
+    if extra:
+        rep.info("coverage-extra", "Reported indicators outside the project's expected set",
+                 "The programme reports an indicator that its MPTF project is not classified for. "
+                 "Either the classification (13_Projects activities) or the programme link needs a check.",
+                 extra)
+
+
 def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dict]) -> dict:
     df, years = ds.frame, ds.years
     df = df[df["code"].isin(config.indicators)]
@@ -403,6 +479,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
             "end": int(grp["end"].max()) if grp["end"].notna().any() else None,
         })
     link_projects(programmes, projects, config, ds.report)
+    coverage_checks(df, programmes, projects, config, ds.report)
     prog_id = {p["name"]: p["id"] for p in programmes}
 
     # Several old indicators feeding one standard code keep their type (e.g. buildings / bridges).
@@ -461,6 +538,7 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
         "programmes": programmes,
         "records": records,
         "projects": projects,
+        "activities": config.activities,
         "co2Factors": [
             {"indicator": code, **{k: c[k] for k in ("component", "rate", "horizon", "formula")}}
             for code, comps in sorted(config.factors.items()) for c in comps
@@ -484,6 +562,7 @@ def build(input_path: Path, out_dir: Path, config_dir: Path, projects_path: Path
         projects = read_projects(projects_path, config.country_alias(), ds.report)
         for p in projects:
             p["passThrough"] = config.pass_through.get(p["id"])
+        classify_projects(projects, config, ds.report)
 
     payload = None if ds.report.has_errors else to_payload(ds, config, input_path.name, projects)
 

@@ -229,8 +229,8 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
       run: () => navigate({ page: "outcome", id: i.outcome }),
     })),
     ...m.projects.map((p) => ({
-      group: t("Portfolio"), label: p.name, meta: `MPTF ${p.id}`,
-      run: () => navigate(p.programmes.length === 1 ? { page: "programme", id: p.programmes[0] } : { page: "portfolio" }),
+      group: t("Portfolio"), label: p.short || p.name, meta: `MPTF ${p.id}${p.short && p.short !== p.name ? ` · ${p.name}` : ""}`,
+      run: () => navigate({ page: "project", id: String(p.id) }),
     })),
     ...m.countries.map((c) => ({
       group: t("Countries"), label: `${t("Filter by")} ${nameOf(c)}`, run: () => setFilters({ countries: [c.id] }),

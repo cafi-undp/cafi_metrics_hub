@@ -63,6 +63,40 @@ export function Methodology() {
         </section>
       </div>
       <section className="section">
+        <div className="grid g-2">
+          <section className="card">
+            <h3>{t("Projects and expected indicators")}</h3>
+            <ul className="small ink-2" style={{ paddingLeft: 18, lineHeight: 1.7 }}>
+              {fr ? (
+                <>
+                  <li>Chaque projet MPTF est classé dans le classeur de référence (onglets 12–15) par <b>type</b> (habilitant, AFOLU / intégré, PSE, secteur privé, préparatoire, appui) et par <b>activités</b>.</li>
+                  <li><b>Obligatoire</b> = indicateur marqué M pour l'un des types du projet (un PIREDD est AFOLU + PSE et cumule les deux). Les activités déclenchent les indicateurs T1/T2 comme <b>requis</b> et les T3 comme <b>facultatifs</b>.</li>
+                  <li>Les subventions préparatoires n'ont pas d'indicateur obligatoire, seulement ceux de leurs activités ; les lignes d'appui / coûts directs n'en ont aucun.</li>
+                  <li>« Renseigné » = le programme de résultats relié au projet (config/programmes.yml) a au moins une ligne pour ce code dans ProjectData.xlsx. Les écarts sont listés sur la page Qualité des données.</li>
+                </>
+              ) : (
+                <>
+                  <li>Each MPTF project is classified in the reference workbook (tabs 12–15) by <b>type</b> (enabling, AFOLU / integrated, PES, private sector, preparatory, support) and by <b>activities</b>.</li>
+                  <li><b>Mandatory</b> = indicator flagged M for one of the project's types (a PIREDD is AFOLU + PES and gets both). Activities trigger T1/T2 indicators as <b>required</b> and T3 indicators as <b>optional</b>.</li>
+                  <li>Preparatory grants have no mandatory indicator, only those triggered by their activities; support / direct-cost lines have none.</li>
+                  <li>"Reported" = the results programme linked to the project (config/programmes.yml) has at least one row for that code in ProjectData.xlsx. Gaps are listed on the Data quality page.</li>
+                </>
+              )}
+            </ul>
+          </section>
+          <section className="card">
+            <h3>{t("Activities")}</h3>
+            <div className="small ink-2" style={{ display: "grid", gap: 4 }}>
+              {m.activities.map((a) => (
+                <div key={a.code} style={{ display: "flex", justifyContent: "space-between", gap: 12 }}>
+                  <span>{a.name}</span><span className="muted num" style={{ textAlign: "right" }}>{a.indicators.join(", ")}</span>
+                </div>
+              ))}
+            </div>
+          </section>
+        </div>
+      </section>
+      <section className="section">
         <div className="section-head">
           <div>
             <h2>{t("Standard indicators")}</h2>

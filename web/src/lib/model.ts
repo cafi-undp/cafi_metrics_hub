@@ -8,7 +8,7 @@
 //    (The Power BI report summed per-row percentages instead, which is wrong.)
 //  * An outcome's achievement is the average of its indicators' achievements.
 
-import type { DataRecord, Indicator, Metrics, Programme, Unit } from "./types";
+import type { DataRecord, Indicator, Metrics, Programme, Project, Requirement, Unit } from "./types";
 
 export interface Filters {
   year: number;
@@ -182,4 +182,79 @@ export function statusOf(achievement: number | null, start: number | null, end: 
 
 export function activeIn(p: Programme, year: number): boolean {
   return (p.start ?? -Infinity) <= year && year <= (p.end ?? Infinity);
+}
+
+// ───────────────────────── Project ↔ indicator coverage ─────────────────────────
+// A project is classified in the reference workbook (type, activities) and that
+// classification lists the standard indicators it is expected to report. Coverage
+// compares that list with what the project's linked programme(s) actually report.
+
+export const REQUIREMENT_RANK: Record<Requirement, number> = { mandatory: 0, required: 1, optional: 2 };
+
+export interface CoverageRow {
+  code: string;
+  requirement: Requirement;
+  basis: string;
+  reported: boolean;
+  records: DataRecord[];
+}
+
+export interface Coverage {
+  rows: CoverageRow[];
+  expected: number; // mandatory + required
+  reported: number; // of those, reported
+  optionalReported: number;
+  extra: string[]; // reported codes not in the expected set at all
+}
+
+/** Expected indicators of one or more projects, merged (strongest requirement wins). */
+export function expectedIndicators(projects: Project[]): Map<string, { requirement: Requirement; basis: string }> {
+  const out = new Map<string, { requirement: Requirement; basis: string }>();
+  for (const p of projects) {
+    for (const e of p.indicators) {
+      const cur = out.get(e.code);
+      if (!cur || REQUIREMENT_RANK[e.requirement] < REQUIREMENT_RANK[cur.requirement]) out.set(e.code, { requirement: e.requirement, basis: e.basis });
+    }
+  }
+  return out;
+}
+
+/** Coverage of the given projects by the records of the given programmes. */
+export function coverage(projects: Project[], records: DataRecord[]): Coverage {
+  const byCode = byKey(records, (r) => r.indicator);
+  const rows = [...expectedIndicators(projects).entries()]
+    .map(([code, e]) => ({ code, ...e, reported: byCode.has(code), records: byCode.get(code) ?? [] }))
+    .sort((a, b) => REQUIREMENT_RANK[a.requirement] - REQUIREMENT_RANK[b.requirement] || a.code.localeCompare(b.code));
+  const core = rows.filter((r) => r.requirement !== "optional");
+  return {
+    rows,
+    expected: core.length,
+    reported: core.filter((r) => r.reported).length,
+    optionalReported: rows.filter((r) => r.requirement === "optional" && r.reported).length,
+    extra: [...byCode.keys()].filter((c) => !rows.some((r) => r.code === c)).sort(),
+  };
+}
+
+/** Records of the programmes linked to a project. */
+export function projectRecords(ix: Index, p: Project): DataRecord[] {
+  const ids = new Set(p.programmes);
+  return ids.size ? ix.m.records.filter((r) => ids.has(r.programme)) : [];
+}
+
+/** For each indicator code: projects expected to report it (non-optional) and how many of them do. */
+export function indicatorCoverage(ix: Index): Map<string, { expected: number; reported: number; optional: number }> {
+  const out = new Map<string, { expected: number; reported: number; optional: number }>();
+  for (const p of ix.m.projects) {
+    const reportedCodes = new Set(projectRecords(ix, p).map((r) => r.indicator));
+    for (const e of p.indicators) {
+      const c = out.get(e.code) ?? { expected: 0, reported: 0, optional: 0 };
+      if (e.requirement === "optional") c.optional++;
+      else {
+        c.expected++;
+        if (reportedCodes.has(e.code)) c.reported++;
+      }
+      out.set(e.code, c);
+    }
+  }
+  return out;
 }
