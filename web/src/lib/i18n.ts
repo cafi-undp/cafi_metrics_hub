@@ -258,6 +258,17 @@ const fr: Record<string, string> = {
   "cooking": "Cuisson propre",
   "Method": "Méthode",
   "Other": "Autre",
+  "Monitoring status": "État du suivi",
+  "Tier escalation: ENR-02 → usage, ENR-03 → fuel savings, CLM-02 → effectiveness of forest protection; measured values in config/carbon/overrides.yml":
+    "Montée en niveau : ENR-02 → usage, ENR-03 → économie de combustible, CLM-02 → efficacité de la protection ; valeurs mesurées dans config/carbon/overrides.yml",
+  "ex post": "ex post",
+  "ex ante": "ex ante",
+  "Monitored": "Suivi",
+  "Overrides": "Valeurs mesurées",
+  "No programme reports ENR-02, ENR-03 or CLM-02 yet, and config/carbon/overrides.yml is empty: every carbon figure is an ex-ante default.":
+    "Aucun programme ne renseigne encore ENR-02, ENR-03 ou CLM-02, et config/carbon/overrides.yml est vide : tous les chiffres carbone sont des valeurs ex ante par défaut.",
+  "derived from project type": "déduit du type de projet",
+  "Claim": "Revendication",
   "draws": "tirages",
 };
 

@@ -24,6 +24,7 @@ export function ProjectDetail({ id }: { id: string }) {
   const activities = m.activities.filter((a) => p.activities.includes(a.name));
   const classified = p.projectType !== null;
   const title = p.short || p.name;
+  const claim = m.carbon.claims.find((c) => c.project === p.id);
 
   return (
     <>
@@ -46,7 +47,9 @@ export function ProjectDetail({ id }: { id: string }) {
               <span className="pill warn" title={p.note}>{t("Classification to confirm")} · {t(p.confidence)}</span>
             )}
             {p.passThrough && <span className="pill warn" title={p.passThrough}>{t("Transfer — not counted")}</span>}
+            {claim && <span className="pill req req-m" title={claim.note}>{t("Claim")}: {t(claim.status)}{claim.confirm ? ` · ${t("To confirm")}` : ""}</span>}
           </div>
+          {claim?.note && <p className="small muted" style={{ marginTop: 6 }}>{claim.note}</p>}
           {p.note && <p className="small muted" style={{ marginTop: 8 }}>{p.note}</p>}
         </div>
       </div>

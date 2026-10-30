@@ -1,6 +1,6 @@
 # Carbon accounting method for the CAFI Metrics Hub — method 2.0
 
-Status: Phase 1 implemented (`pipeline/carbon/`, `config/carbon/`). This document is the reference for the engine; the factor library on the Climate impact page is generated from `config/carbon/factors.yml`, so values there are authoritative. Section 8 gives the results of the current build.
+Status: Phases 1 and 2 implemented (`pipeline/carbon/`, `config/carbon/`). This document is the reference for the engine; the factor library on the Climate impact page is generated from `config/carbon/factors.yml`, so values there are authoritative. Section 8 gives the results of the current build.
 
 ## 1. Purpose and quality bar
 
@@ -229,7 +229,7 @@ Phase 1 (engine and two ledgers, Tier 1/2 defaults):
 - Tests: golden values per module against hand calculations in this document; property tests (monotonic growth, cap respected, rotation halving, device life cut-off, vintage sums equal totals); reproducible Monte Carlo.
 - Documentation: this file becomes `docs/carbon-methodology.md` (EN) with an FR summary on the Methodology page.
 
-Phase 2 (monitoring data): ENR-02/03 and CLM-02 ingestion with tier escalation; survival and reversal handling; claims register populated for Mai-Ndombe and private-sector projects; household size from EDS-RDC III.
+Phase 2 (monitoring data, implemented): ENR-02, ENR-03 and CLM-02 rows reported by a programme replace the usage, fuel-saving and effectiveness defaults for that programme (`CarbonEngine.observe`); CLM-02 rows whose label says baseline/reference supply the programme's own baseline, otherwise the allocated rate × protected area is used; `config/carbon/overrides.yml` holds programme-measured parameters (Tier 3); records carry `basis` (ex ante / ex post) and the list of monitored parameters; reversals larger than the buffer raise a warning; private-sector projects get a derived `corporate_inventory` claim to confirm; household size confirmed at 5.3 by EDS-RDC III 2023-24.
 
 Phase 3 (spatial): programme polygons; biomass-map time series for the ARR performance benchmark and CLM-02; deforestation-risk allocation of the jurisdictional baseline (VMD0055 logic); alert-based reversal detection; strata derived from maps instead of country defaults.
 

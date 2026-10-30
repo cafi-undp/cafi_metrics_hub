@@ -47,11 +47,11 @@ export function Climate() {
 
   // Per-unit values actually used, one row per indicator × stratum present in the data.
   const perUnit = useMemo(() => {
-    const seen = new Map<string, { code: string; stratum: string; inv: number; int: number; pot: number; tier: number; n: number }>();
+    const seen = new Map<string, { code: string; stratum: string; inv: number; int: number; pot: number; tier: number; n: number; basis: string }>();
     for (const r of co2Recs) {
       const c = r.co2!;
-      const k = `${r.indicator}|${c.stratum}`;
-      const e = seen.get(k) ?? { code: r.indicator, stratum: c.stratum, inv: c.perUnit.inventory, int: c.perUnit.intervention, pot: c.perUnit.potential + c.perUnit.indicative, tier: c.tier, n: 0 };
+      const k = `${r.indicator}|${c.stratum}|${c.basis}`;
+      const e = seen.get(k) ?? { code: r.indicator, stratum: c.stratum, inv: c.perUnit.inventory, int: c.perUnit.intervention, pot: c.perUnit.potential + c.perUnit.indicative, tier: c.tier, n: 0, basis: c.basis };
       e.n++;
       seen.set(k, e);
     }
@@ -59,6 +59,8 @@ export function Climate() {
   }, [co2Recs]);
 
   const claims = m.carbon.claims.map((c) => ({ ...c, p: m.projects.find((p) => p.id === c.project) }));
+  const exPost = co2Recs.filter((r) => r.co2!.basis === "ex post").length;
+  const monitoring = Object.entries(m.carbon.monitoring).map(([name, v]) => ({ name, p: m.programmes.find((p) => p.name === name), ...v }));
 
   return (
     <>
@@ -259,9 +261,24 @@ export function Climate() {
             { key: "int", label: t("Intervention"), numeric: true, value: (r) => r.int, render: (r) => (r.int ? num(r.int, 1) : "–") },
             { key: "pot", label: t("Other"), numeric: true, value: (r) => r.pot, render: (r) => (r.pot ? <span title={`${t("Indicative: soil carbon")} / ${t("Potential: displaced fuelwood")}`}>{num(r.pot, 1)}</span> : "–") },
             { key: "t", label: t("Tier"), numeric: true, value: (r) => r.tier, render: (r) => <TierBadge tier={`T${r.tier}`} /> },
+            { key: "b", label: t("Basis"), value: (r) => r.basis, render: (r) => <span className={`pill ${r.basis === "ex post" ? "req req-m" : ""}`}>{t(r.basis)}</span> },
             { key: "n", label: t("rows"), numeric: true, value: (r) => r.n },
           ] as Column<(typeof perUnit)[number]>[]} />
         </section>
+      </section>
+
+      <section className="section">
+        <div className="section-head">
+          <div><h2>{t("Monitoring status")}</h2><p className="muted small">{t("Tier escalation: ENR-02 → usage, ENR-03 → fuel savings, CLM-02 → effectiveness of forest protection; measured values in config/carbon/overrides.yml")}</p></div>
+          <span className="muted small">{exPost} / {co2Recs.length} {t("rows")} {t("ex post")}</span>
+        </div>
+        {monitoring.length ? (
+          <DataTable rows={monitoring} cols={[
+            { key: "p", label: t("Programme"), value: (r) => r.name, render: (r) => (r.p ? <Link to={{ page: "programme", id: r.p.id }}>{r.name}</Link> : r.name) },
+            { key: "i", label: t("Monitored"), value: (r) => Object.entries(r.indicators).map(([k, v]) => `${v} → ${k}`).join(", ") || "–" },
+            { key: "o", label: t("Overrides"), value: (r) => r.overrides.join(", ") || "–" },
+          ] as Column<(typeof monitoring)[number]>[]} />
+        ) : <div className="card small muted">{t("No programme reports ENR-02, ENR-03 or CLM-02 yet, and config/carbon/overrides.yml is empty: every carbon figure is an ex-ante default.")}</div>}
       </section>
 
       <section className="section">
@@ -290,7 +307,7 @@ export function Climate() {
               <div className="card" key={c.project}>
                 <div className="xsmall muted">MPTF {c.project}</div>
                 <h3 style={{ fontSize: 15, marginTop: 4 }}>{c.p ? <Link to={{ page: "project", id: String(c.p.id) }}>{c.p.short || c.p.name}</Link> : c.project}</h3>
-                <div style={{ marginTop: 8 }}><span className="pill req req-m">{t(c.status)}</span>{c.confirm && <> <span className="pill warn">{t("To confirm")}</span></>}</div>
+                <div style={{ marginTop: 8 }}><span className="pill req req-m">{t(c.status)}</span>{c.confirm && <> <span className="pill warn">{t("To confirm")}</span></>}{c.derived && <> <span className="pill">{t("derived from project type")}</span></>}</div>
                 {c.note && <p className="small ink-2" style={{ marginTop: 8 }}>{c.note}</p>}
               </div>
             ))}

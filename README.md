@@ -82,7 +82,8 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 | `config/carbon/factors.yml` | Carbon factor library: every parameter with value, distribution, tier and source (method 2.0, see `docs/carbon-methodology.md`) |
 | `config/carbon/strata.yml` | Ecological zone and soil class per country, with programme overrides |
 | `config/carbon/archetypes.yml` | Which quantification module (ARR, REDD, ALM, cooking) each carbon indicator uses |
-| `config/carbon/claims.yml` | Claims register: projects whose results are also accounted elsewhere (national programme, company inventory, credits) |
+| `config/carbon/claims.yml` | Claims register: projects whose results are also accounted elsewhere (national programme, company inventory, credits); private-sector projects get a derived entry to confirm |
+| `config/carbon/overrides.yml` | Programme-measured carbon parameters (Tier 3), e.g. a kitchen performance test result, which replace the library default for that programme |
 | `config/headline.yml` | Figures not in the workbook (beneficiaries, anticipated portfolio CO₂) |
 
 ### Calculation rules
@@ -97,7 +98,7 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
   - *Inventory ledger* = carbon stock changes within the programme boundary (GHG Protocol Land Sector and Removals logic): gross removals, with emissions from reversals booked separately.
   - *Intervention ledger* = net GHG benefit against a baseline, after leakage and a non-permanence buffer (ISO 14064-2; CCP-approved methodologies VM0047, VM0048, TPDDTEC v4 / VM0050; CDM TOOL33 defaults).
   - Each year's increase of an indicator is a *cohort* that accumulates carbon up to a cap; harvested systems are credited at the long-term average stock. *Expected (full cycle)* = stock in place × per-unit value over 20 years; *realised to date* = the cohorts at their age. Monte Carlo bands (p5–p95) from the IPCC uncertainties.
-  - Soil carbon (indicative) and displaced fuelwood (potential) are shown apart and never added to a headline. Defaults flagged `monitored_by` are replaced by ENR-02, ENR-03 and CLM-02 when reported.
+  - Soil carbon (indicative) and displaced fuelwood (potential) are shown apart and never added to a headline. Defaults flagged `monitored_by` are replaced automatically when a programme reports ENR-02 (usage), ENR-03 (fuel savings) or CLM-02 (observed deforestation → effectiveness); such figures are labelled *ex post*.
 
 ### Changes from the Power BI report — please confirm
 

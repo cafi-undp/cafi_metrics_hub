@@ -117,6 +117,10 @@ export interface Carbon {
   archetype: "arr" | "redd" | "alm" | "cooking";
   ledger: "inventory" | "intervention" | "indicative";
   stratum: string; // country/zone/soil
+  basis: "ex ante" | "ex post"; // ex post when a monitored indicator or an override replaced a default
+  monitored: Record<string, string>; // parameter → indicator that supplied it (usage ← ENR-02, …)
+  overrides: string[]; // factor ids taken from config/carbon/overrides.yml
+  reversal: { released: number; share: number; buffer: number } | null;
   inventory: LedgerSeries & { emissions: (number | null)[] };
   intervention: LedgerSeries;
   indicative: LedgerSeries | null; // soil carbon without sampling
@@ -148,7 +152,8 @@ export interface CarbonMeta {
   factors: CarbonFactor[];
   archetypes: Record<string, { module: string; label: string; system?: string; reference?: string; ledger?: string; fuelwood?: boolean }>;
   strata: Record<string, { country: string; zone: string; soil: string }>;
-  claims: { project: number; status: string; note?: string; confirm?: boolean }[];
+  claims: { project: number; status: string; note?: string; confirm?: boolean; derived?: boolean }[];
+  monitoring: Record<string, { indicators: Record<string, string>; overrides: string[] }>;
   draws: number;
 }
 

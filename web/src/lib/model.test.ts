@@ -60,7 +60,7 @@ describe("statusOf", () => {
 
 describe("co2Aggregate", () => {
   const co2 = {
-    archetype: "arr" as const, ledger: "intervention" as const, stratum: "DRC/moist/lac",
+    archetype: "arr" as const, ledger: "intervention" as const, stratum: "DRC/moist/lac", basis: "ex ante" as const, monitored: {}, overrides: [], reversal: null,
     inventory: { expected: [100, 200], realised: [0, 50], emissions: [0, 5] },
     intervention: { expected: [80, 160], realised: [0, 40] },
     indicative: null, potential: { expected: [10, 20], realised: [0, 0] },

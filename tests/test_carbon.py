@@ -119,3 +119,88 @@ def test_library_describe_lists_every_factor(engine):
     assert {"cf", "fnrb", "g_anr", "defor_rate", "buffer_arr"} <= ids
     fnrb = next(r for r in rows if r["id"] == "fnrb")
     assert fnrb["values"]["DRC"] == 0.42 and fnrb["by"] == "country"
+
+
+# ───────────── Phase 2: tier escalation ─────────────
+import shutil
+import pandas as pd
+from pipeline.carbon.engine import Monitored
+
+
+def frame(rows):
+    """Minimal result frame: programme, code, label and one column per year."""
+    out = []
+    for prog, code, label, vals in rows:
+        out.append({"programme": prog, "code": code, "label": label, **dict(zip(YEARS, vals))})
+    return pd.DataFrame(out)
+
+
+def test_adoption_and_savings_surveys_replace_cookstove_defaults(engine):
+    eng = CarbonEngine(engine.config, YEARS)
+    eng.observe(frame([
+        ("P", "ENR-01", "stoves", [None, 100, 100, 100, 100, 100]),
+        ("P", "ENR-02", "adoption", [None, None, 80, None, None, None]),   # per cent
+        ("P", "ENR-03", "savings", [None, None, 50, None, None, None]),
+    ]))
+    assert eng.monitored["P"].usage[2] == pytest.approx(0.8) and eng.monitored["P"].savings[2] == pytest.approx(0.5)
+    out = eng.compute("ENR-01", [None, 100, 100, 100, 100, 100], None, "DRC", "P")
+    assert out["basis"] == "ex post" and out["monitored"] == {"usage": "ENR-02", "savings": "ENR-03"}
+    assert out["tier"] == 3 and "fuel_savings" not in out["defaults"] and "usage" not in out["defaults"]
+    base = 0.5 * 5.3 * 0.5 * (0.42 * 1.747 + 0.143) * 0.95        # savings 0.5 from ENR-03
+    assert out["intervention"]["realised"][2] == pytest.approx(100 * base * 0.8, abs=0.1)        # one year at usage 0.8
+    assert out["intervention"]["realised"][3] == pytest.approx(100 * base * 0.8 * 2, abs=0.1)    # carried forward
+    assert out["perUnit"]["intervention"] == pytest.approx(base * 0.8 * 5, abs=0.01)              # flat usage, no drop-off
+    # a programme without surveys keeps the defaults
+    other = eng.compute("ENR-01", [None, 100, 100, 100, 100, 100], None, "DRC", "Q")
+    assert other["basis"] == "ex ante" and "usage" in other["defaults"]
+
+
+def test_observed_deforestation_replaces_effectiveness(engine):
+    eng = CarbonEngine(engine.config, YEARS)
+    eng.observe(frame([
+        ("P", "FOR-04", "forest", [None, 1000, 1000, 1000, 1000, 1000]),
+        ("P", "CLM-02", "observed deforestation", [None, None, 3.5, None, None, None]),  # ha/yr vs 0.7 % × 1000 = 7
+    ]))
+    out = eng.compute("FOR-04", [None, 1000, 1000, 1000, 1000, 1000], None, "DRC", "P")
+    assert out["monitored"] == {"effectiveness": "CLM-02"}
+    annual = 0.007 * 0.5 * (1 - 0.2) * 466 * (1 - 0.2)
+    assert out["intervention"]["realised"][2] == pytest.approx(1000 * annual, abs=0.5)
+    assert out["intervention"]["expected"][2] == pytest.approx(1000 * annual * 20, abs=1)
+    # a programme that reports its own baseline row uses it instead of the allocated rate
+    eng2 = CarbonEngine(engine.config, YEARS)
+    eng2.observe(frame([
+        ("P", "FOR-04", "forest", [None, 1000, 1000, 1000, 1000, 1000]),
+        ("P", "CLM-02", "observed", [None, None, 3.5, None, None, None]),
+        ("P", "CLM-02", "baseline (reference scenario)", [None, None, 10, None, None, None]),
+    ]))
+    eff = eng2._effectiveness(eng2.monitored["P"], {"rate": 0.007}, 2)
+    assert eff == pytest.approx(0.65)
+
+
+def test_programme_overrides_are_tier_3(tmp_path):
+    cfg = tmp_path / "config"
+    shutil.copytree(CONFIG, cfg)
+    (cfg / "carbon" / "overrides.yml").write_text(
+        "programmes:\n  P:\n    fuel_savings: {value: 0.5, rel95: 0.1, source: 'KPT 2026'}\n", encoding="utf-8")
+    eng = CarbonEngine(CarbonConfig.load(cfg), YEARS)
+    out = eng.compute("ENR-01", [None, 100], None, "DRC", "P")
+    assert out["basis"] == "ex post" and out["overrides"] == ["fuel_savings"] and out["tier"] == 3
+    base = 0.5 * 5.3 * 0.5 * (0.42 * 1.747 + 0.143) * 0.95
+    usage = [0.75, 0.75, 0.75 * 0.9, 0.75 * 0.8, 0.75 * 0.7]
+    assert out["perUnit"]["intervention"] == pytest.approx(base * sum(usage), abs=0.01)
+    plain = eng.compute("ENR-01", [None, 100], None, "DRC", "Q")
+    assert plain["basis"] == "ex ante" and plain["band"] != out["band"] or plain["perUnit"] != out["perUnit"]
+
+
+def test_claims_derived_from_private_sector_type(engine):
+    projects = [
+        {"id": 1, "projectType": "Private sector + PES"},
+        {"id": 2, "projectType": "Enabling"},
+        {"id": 103850, "projectType": "AFOLU / integrated + PES"},
+    ]
+    claims = {c["project"]: c for c in engine.claims(projects)}
+    assert claims[1]["status"] == "corporate_inventory" and claims[1]["derived"] is True
+    assert 2 not in claims
+    assert claims[103850]["status"] == "national_programme" and "derived" not in claims[103850]
+    meta = engine.describe([], projects)
+    assert "monitoring" in meta and meta["claims"]

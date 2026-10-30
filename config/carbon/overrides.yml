@@ -1,0 +1,17 @@
+# Programme-measured parameters (Tier 3). A value here replaces the library
+# default for that programme only, and the dashboard shows the figure as
+# "ex post". Keep the source: a kitchen performance test, a plot inventory,
+# a survey report, with its date.
+#
+#   programmes:
+#     Improved cookstoves Lituka:
+#       fuel_savings: {value: 0.42, rel95: 0.15, source: "KPT, Kinshasa, March 2026 (n = 120)"}
+#       household_size: {value: 6.1, source: "Project baseline survey 2025"}
+#     PIREDD Plateau:
+#       rotation_woodenergy: {value: 8, source: "Programme management plan"}
+#
+# Monitored indicators (ENR-02 adoption, ENR-03 fuel savings, CLM-02
+# deforestation in the project area) are picked up automatically from
+# ProjectData.xlsx and do not need an entry here.
+
+programmes: {}
