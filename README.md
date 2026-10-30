@@ -15,7 +15,7 @@ config/reference/            │   validate · re-code to standard     static si
 
 | Page | What it shows |
 |---|---|
-| **Overview** | Committed CO₂ against the portfolio target, headline tiles, **What changed in {year}** (three generated statements about the selected year: largest hectare gain, pace and silence, targets reached, climate, first-time reporters), progress per outcome, a map of Central Africa (hectares / programmes / CO₂ — click a country to filter), top programmes, hectares over time, and a treemap of where the hectares are |
+| **Overview** | Committed CO₂ against the portfolio target, headline tiles, **What changed in {year}** (three generated statements about the selected year: largest hectare gain, pace and silence, targets reached, climate, first-time reporters), progress per outcome, a map of the six CAFI member states with a circle per country sized by hectares, programmes or CO₂ (click a country to filter; regional programmes are listed under the map), top programmes, hectares over time, and a treemap of where the hectares are |
 | **Brief** | Briefing mode: the key figures and the generated insights as full-width slides for a meeting, driven with ← → and Esc |
 | **Outcomes** | One tab per standard category (GOV, FOR, FIN, LUT, AGR, ENR, CLM, INC, PPL). Each reported indicator with its standard code, tier, result, target, achievement and year-on-year change; trajectory charts; programme ranking; every sub-indicator row with a status; the category's full list of standard indicators, reported or not |
 | **Programmes** | Timeline of all programme periods; cards or table with average achievement, sparkline and on-track status; a detail page per programme, with its MPTF funding (budget, transfers, spending, status) |

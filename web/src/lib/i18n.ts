@@ -1,6 +1,19 @@
 export type Lang = "en" | "fr";
 
 const fr: Record<string, string> = {
+  "Legend": "Légende",
+  "Click a country to filter": "Cliquez sur un pays pour filtrer",
+  "Click to filter the dashboard": "Cliquer pour filtrer le tableau de bord",
+  "Clear country": "Effacer le pays",
+  "Member state": "État membre",
+  "Not a CAFI country": "Hors pays CAFI",
+  "Member state, no hectares reported": "État membre, aucun hectare déclaré",
+  "Member state, no programme reporting": "État membre, aucun programme déclarant",
+  "Member state, no GHG estimate": "État membre, aucune estimation de GES",
+  "Share of the total shown": "Part du total affiché",
+  "Largest programme": "Premier programme",
+  "{n} regional programme is not placed on the map:": "{n} programme régional n'est pas placé sur la carte :",
+  "{n} regional programmes are not placed on the map:": "{n} programmes régionaux ne sont pas placés sur la carte :",
   "Overview": "Vue d'ensemble",
   "Outcomes": "Résultats",
   "Programmes": "Programmes",
@@ -70,6 +83,7 @@ const fr: Record<string, string> = {
   "Name": "Nom",
   "Start year": "Année de début",
   "programmes": "programmes",
+  "partners": "partenaires",
   "indicators": "indicateurs",
   "Back": "Retour",
   "Absorbed": "Absorbées",
