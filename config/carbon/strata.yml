@@ -1,0 +1,30 @@
+# Stratification: which growth, root-to-shoot, soil and forest parameters a
+# programme uses. Country gives the default; programmes override it.
+#
+#   zone : FAO Global Ecological Zone group — rainforest (central basin,
+#          coastal Gabon/Congo) or moist (tropical moist deciduous: the
+#          savanna–forest mosaics of Kwilu, Mai-Ndombe south, Kwango, Bateke,
+#          Kasaï, Sud-Ubangi, central Cameroon)
+#   soil : IPCC soil class — lac (low-activity clay, most of the basin) or
+#          sandy (Bateke plateau, Kinshasa hinterland)
+
+countries:
+  DRC:               {zone: moist,      soil: lac}
+  Congo:             {zone: rainforest, soil: lac}
+  Gabon:             {zone: rainforest, soil: lac}
+  Cameroon:          {zone: moist,      soil: lac}
+  CAR:               {zone: moist,      soil: lac}
+  Equatorial Guinea: {zone: rainforest, soil: lac}
+  Regional:          {zone: moist,      soil: lac}
+
+programmes:
+  PIREDD Equateur:           {zone: rainforest}
+  PIREDD Oriental:           {zone: rainforest}
+  PIREDD Mongala:            {zone: rainforest}
+  PIREDD Maniema 1:          {zone: rainforest}
+  PIREDD Maniema 2:          {zone: rainforest}
+  PIREDD Plateau:            {soil: sandy}
+  Urban greening:            {soil: sandy}
+  Programme Energie:         {soil: sandy}
+  Programme Energie 2:       {soil: sandy}
+  Improved cookstoves Lituka: {soil: sandy}

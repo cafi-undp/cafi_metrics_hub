@@ -46,7 +46,8 @@ export function Overview() {
   const partners = new Set(records.map((r) => r.partner)).size;
   const countries = new Set(records.map((r) => ix.countryOf(r))).size;
   const anticipated = m.headline.anticipatedCo2.value;
-  const mega = co2.committed >= 1e6;
+  const net = co2.intervention.expected;
+  const mega = net >= 1e6;
   const filtered = filters.countries.length + filters.partners.length + filters.programmes.length > 0;
 
   // Outcome summaries
@@ -62,7 +63,7 @@ export function Overview() {
     const rc = records.filter((r) => ix.countryOf(r) === c.id);
     const ha = rc.filter((r) => m.meta.areaIndicators.includes(r.indicator)).reduce((s, r) => s + (valueAt(r.values, yi) ?? 0), 0);
     const progs = new Set(rc.map((r) => r.programme)).size;
-    const c2 = co2Aggregate(rc, yi).committed;
+    const c2 = co2Aggregate(rc, yi).intervention.expected;
     const value = mapMetric === "ha" ? ha : mapMetric === "programmes" ? progs : c2;
     return {
       iso: c.iso!, label: nameOf(c), value,
@@ -70,7 +71,7 @@ export function Overview() {
       extra: `${progs} ${t("programmes")}`,
     };
   }).filter((d) => d.value > 0 || mapMetric === "programmes");
-  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Programmes reporting") : t("Committed (full cycle)");
+  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Programmes reporting") : t("Net GHG benefit expected, full cycle");
 
   const isoToCountry = new Map(m.countries.map((c) => [c.iso, c.id]));
 
@@ -86,13 +87,14 @@ export function Overview() {
             <p className="lede">{t("Cumulative results reported by CAFI-funded programmes")}.</p>
             <div className="hero-figure">
               <div className="big">
-                <CountUp value={co2.committed / (mega ? 1e6 : 1e3)} format={(v) => num(v, 1)} /><small>{mega ? "Mt" : "kt"} CO₂e</small>
+                <CountUp value={net / (mega ? 1e6 : 1e3)} format={(v) => num(v, 1)} /><small>{mega ? "Mt" : "kt"} CO₂e</small>
               </div>
-              <div className="cap">{t("Emission reductions committed")}</div>
+              <div className="cap">{t("Net GHG benefit expected, full cycle")} · {t("range")} {compact(co2.intervention.low, 2)}–{compact(co2.intervention.high, 2)}</div>
+              <div className="cap" style={{ marginTop: 2 }}>{t("Removals in the inventory ledger")}: {compact(co2.inventory.expected, 2)} tCO₂e · {t("Realised to date")}: {compact(co2.intervention.realised, 2)}</div>
               <div className="hero-meter">
-                <div className="track"><div className="fill" style={{ width: `${Math.min(100, (co2.committed / anticipated) * 100)}%` }} /></div>
+                <div className="track"><div className="fill" style={{ width: `${Math.min(100, (net / anticipated) * 100)}%` }} /></div>
                 <div className="row">
-                  <span>{pct(co2.committed / anticipated, 1)} {t("of anticipated portfolio total")}</span>
+                  <span>{pct(net / anticipated, 1)} {t("of anticipated portfolio total")}</span>
                   <span>{compact(anticipated)} tCO₂e</span>
                 </div>
               </div>

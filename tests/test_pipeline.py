@@ -5,7 +5,7 @@ from pathlib import Path
 import pandas as pd
 import pytest
 
-from pipeline.build import ROOT, Config, build, carry_forward, co2_for
+from pipeline.build import ROOT, Config, build
 
 CONFIG = ROOT / "config"
 HEADER = ["Pays", "Programme", "Implementing org.", "Outcome", "Indicator", "Indicator synonym",
@@ -98,37 +98,18 @@ def test_cumulative_drop_is_flagged(tmp_path):
     assert checks["cumulative-drop"]["count"] == 1
 
 
-def test_carry_forward():
-    assert carry_forward([None, 1, None, 3, None]) == [None, 1, 1, 3, 3]
-
-
-@pytest.mark.parametrize("code,results,expected_absorbed,expected_avoided", [
-    # Expressions copied from the Power BI calculated columns Absorbed_Res1 / Avoided_Res1
-    # (old codes 01, 02, 03, 04 → AGR-01, AGR-02, AGR-03, FOR-01).
-    ("AGR-01", 100, 0.8 * 3.667 * 100 * 10, 0.8 * 3.667 * (100 / 2) * 10),
-    ("AGR-02", 100, (5.09 + 1.22) * 3.667 * 100 * 10, (5.09 + 1.22) * 3.667 * (100 / 2) * 10),
-    ("AGR-03", 100, (5.09 + 1.22) * 3.667 * 100 * 10, (5.09 + 1.22) * 3.667 * (100 / 2) * 10),
-    ("FOR-01", 100, (0.62 + (19 * 0.25 / 100)) * 3.667 * 100 * 15,
-     (0.62 + (19 * 0.25 / 100)) * 3.667 * (100 * (0.5 / 100)) * 15),
-])
-def test_co2_matches_power_bi_formulas(code, results, expected_absorbed, expected_avoided):
-    factors = Config.load(CONFIG).factors
-    out = co2_for(code, [results], None, factors)
-    assert out["absorbed"][0] == pytest.approx(expected_absorbed, abs=0.1)
-    assert out["avoided"][0] == pytest.approx(expected_avoided, abs=0.1)
-
-
-def test_clean_cooking_total_matches_power_bi():
-    # Power BI booked it as absorbed: (5.5*(2533/1000)*R)*0.75*0.35*10; here it is avoided.
-    out = co2_for("ENR-01", [1000], None, Config.load(CONFIG).factors)
-    assert out["absorbed"][0] + out["avoided"][0] == pytest.approx(5.5 * 2.533 * 1000 * 0.75 * 0.35 * 10, abs=0.1)
-
-
-def test_realised_co2_accrues_yearly():
-    factors = {"AGR-01": [{"component": "absorbed", "rate": 2.0, "horizon": 10}]}
-    out = co2_for("AGR-01", [None, 10, 20], 50, factors)
-    assert out["realised"] == [None, 20.0, 60.0]
-    assert out["targetAbsorbed"] == 1000.0
+def test_records_carry_two_ledger_carbon_series():
+    out = ROOT / "web" / "public" / "data"
+    assert build(ROOT / "data" / "ProjectData.xlsx", out, CONFIG, ROOT / "data" / "MPTF_Projects.xlsx") == 0
+    m = json.loads((out / "metrics.json").read_text())
+    assert m["carbon"]["method"] == "2.0" and m["carbon"]["factors"] and m["carbon"]["claims"]
+    with_c = [r for r in m["records"] if r["co2"]]
+    assert with_c
+    for r in with_c:
+        c = r["co2"]
+        assert {"inventory", "intervention", "band", "perUnit", "target", "stratum"} <= c.keys()
+        assert len(c["inventory"]["realised"]) == len(m["meta"]["years"])
+    assert {i["code"] for i in m["indicators"] if i["hasCo2"]} == {"FOR-01", "FOR-02", "AGR-01", "AGR-02", "AGR-03", "ENR-01", "FOR-04"}
 
 
 def make_projects(tmp_path: Path) -> Path:

@@ -19,7 +19,7 @@ config/reference/            │   validate · re-code to standard     static si
 | **Outcomes** | One tab per standard category (GOV, FOR, FIN, LUT, AGR, ENR, CLM, INC, PPL). Each reported indicator with its standard code, tier, result, target, achievement and year-on-year change; trajectory charts; programme ranking; every sub-indicator row with a status; the category's full list of standard indicators, reported or not |
 | **Programmes** | Timeline of all programme periods; cards or table with average achievement, sparkline and on-track status; a detail page per programme, with its MPTF funding (budget, transfers, spending, status) |
 | **Portfolio** | All CAFI and FONAREDD projects from the MPTF list: approved budget, transfers, spending, status, by country and start year, and which ones report results |
-| **Climate impact** | Absorbed vs avoided emissions by indicator, realised vs committed over time, CO₂ by country, and the emission factors used |
+| **Climate impact** | Two carbon ledgers (inventory = stock changes; intervention = net benefit after leakage and buffer), expected vs realised with p5–p95 bands, by indicator and country, per-unit values by stratum, the factor library with sources, the claims register |
 | **Data quality** | Every check run on the workbook, with the Excel row numbers to fix |
 | **Methodology** | How every number is calculated, plus the 67 standard indicators (filter by tier or reported) |
 
@@ -79,7 +79,10 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 | `config/indicators.yml` | How old indicator numbers (01–14) in ProjectData.xlsx map to standard codes, sub-indicator overrides, category colours and French names, the hectare headline, countries |
 | `config/programmes.yml` | Which MPTF project id(s) each results programme belongs to (lines marked `check` need confirming). The link is what connects a programme's results to its project's budget, type and expected indicators |
 | `config/portfolio.yml` | Fund-to-fund transfers left out of portfolio totals |
-| `config/co2_factors.yml` | tCO₂e per unit per year and horizon for each indicator, with the derivation shown on the site |
+| `config/carbon/factors.yml` | Carbon factor library: every parameter with value, distribution, tier and source (method 2.0, see `docs/carbon-methodology.md`) |
+| `config/carbon/strata.yml` | Ecological zone and soil class per country, with programme overrides |
+| `config/carbon/archetypes.yml` | Which quantification module (ARR, REDD, ALM, cooking) each carbon indicator uses |
+| `config/carbon/claims.yml` | Claims register: projects whose results are also accounted elsewhere (national programme, company inventory, credits) |
 | `config/headline.yml` | Figures not in the workbook (beneficiaries, anticipated portfolio CO₂) |
 
 ### Calculation rules
@@ -90,17 +93,16 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
   - The Power BI report added up per-row percentages instead, which understated progress. For example, it showed 3 % for clean cooking where the correct figure is 120 %.
 - **Units are never mixed.** Hectares, counts and km are kept apart.
 - **Status** compares achievement with the share of the programme period that has elapsed.
-- **CO₂:**
-  - *Committed* = result × factor × horizon.
-  - *Realised* = what is in place accrues one year of benefit each year.
-  - *Target* = final target × factor × the same horizon.
+- **Carbon (method 2.0, `docs/carbon-methodology.md`):** one cohort engine, two ledgers that are never netted.
+  - *Inventory ledger* = carbon stock changes within the programme boundary (GHG Protocol Land Sector and Removals logic): gross removals, with emissions from reversals booked separately.
+  - *Intervention ledger* = net GHG benefit against a baseline, after leakage and a non-permanence buffer (ISO 14064-2; CCP-approved methodologies VM0047, VM0048, TPDDTEC v4 / VM0050; CDM TOOL33 defaults).
+  - Each year's increase of an indicator is a *cohort* that accumulates carbon up to a cap; harvested systems are credited at the long-term average stock. *Expected (full cycle)* = stock in place × per-unit value over 20 years; *realised to date* = the cohorts at their age. Monte Carlo bands (p5–p95) from the IPCC uncertainties.
+  - Soil carbon (indicative) and displaced fuelwood (potential) are shown apart and never added to a headline. Defaults flagged `monitored_by` are replaced by ENR-02, ENR-03 and CLM-02 when reported.
 
 ### Changes from the Power BI report — please confirm
 
-1. CO₂ targets now use the same horizon as CO₂ results. Power BI used 4, 9 or 5 years for targets but 10 for results.
-2. Forest conservation (FOR-04, old 13) now counts towards CO₂. Power BI had no results formula for it, so it always showed 0.
-3. Clean cooking (ENR-01) and forest conservation (FOR-04) are counted as *avoided* emissions, not *absorbed*.
-4. Beneficiaries and anticipated CO₂ are still constants, now in `config/headline.yml`. They need a source.
+1. The Power BI carbon coefficients were replaced by method 2.0 (above). The expected full-cycle figure moves from 31 Mt CO₂e to 13 Mt removals in the inventory ledger and 11 Mt net benefit in the intervention ledger (p5–p95 bands shown on the site) because harvested systems are time-averaged, cookstoves use the national fraction of non-renewable biomass and a five-year device life, and the 50 % avoided-deforestation add-on on agriculture is gone; natural regeneration rises.
+2. Beneficiaries and anticipated CO₂ are still constants, now in `config/headline.yml`. They need a source.
 
 ## Running locally
 

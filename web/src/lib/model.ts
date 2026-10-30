@@ -143,24 +143,50 @@ export function sumUnit(aggs: IndicatorAgg[], unit: Unit, codes?: string[]): num
     .reduce((s, a) => s + a.value, 0);
 }
 
-export interface Co2Agg {
-  absorbed: number;
-  avoided: number;
-  committed: number;
-  realised: number;
+// ───────────────────────── Carbon, method 2.0 ─────────────────────────
+// Two ledgers (docs/carbon-methodology.md): inventory = stock changes only;
+// intervention = net benefit after leakage and buffer. Indicative (soil) and
+// potential (fuelwood) are shown apart and never added to a headline.
+
+export interface LedgerTotals {
+  expected: number; // ex ante, full cycle of what is in place as of the year
+  realised: number; // delivered to date by the cohorts alive
+  low: number; // p5 band on expected
+  high: number; // p95 band on expected
+  realisedLow: number;
+  realisedHigh: number;
   target: number;
 }
 
-export function co2Aggregate(records: DataRecord[], yi: number): Co2Agg {
-  let absorbed = 0, avoided = 0, realised = 0, target = 0;
+export interface CarbonAgg {
+  inventory: LedgerTotals;
+  intervention: LedgerTotals;
+  indicative: { expected: number; realised: number };
+  potential: { expected: number; realised: number };
+  emissions: number;
+  records: number;
+}
+
+const emptyLedger = (): LedgerTotals => ({ expected: 0, realised: 0, low: 0, high: 0, realisedLow: 0, realisedHigh: 0, target: 0 });
+
+export function co2Aggregate(records: DataRecord[], yi: number): CarbonAgg {
+  const out: CarbonAgg = { inventory: emptyLedger(), intervention: emptyLedger(), indicative: { expected: 0, realised: 0 }, potential: { expected: 0, realised: 0 }, emissions: 0, records: 0 };
   for (const r of records) {
-    if (!r.co2) continue;
-    absorbed += valueAt(r.co2.absorbed, yi) ?? 0;
-    avoided += valueAt(r.co2.avoided, yi) ?? 0;
-    realised += valueAt(r.co2.realised, yi) ?? 0;
-    target += r.co2.targetAbsorbed + r.co2.targetAvoided;
+    const c = r.co2;
+    if (!c) continue;
+    out.records++;
+    for (const l of ["inventory", "intervention"] as const) {
+      const e = valueAt(c[l].expected, yi) ?? 0;
+      const d = valueAt(c[l].realised, yi) ?? 0;
+      const [lo, hi] = c.band[l];
+      const t = out[l];
+      t.expected += e; t.realised += d; t.low += e * lo; t.high += e * hi; t.realisedLow += d * lo; t.realisedHigh += d * hi; t.target += c.target[l];
+    }
+    if (c.indicative) { out.indicative.expected += valueAt(c.indicative.expected, yi) ?? 0; out.indicative.realised += valueAt(c.indicative.realised, yi) ?? 0; }
+    if (c.potential) { out.potential.expected += valueAt(c.potential.expected, yi) ?? 0; out.potential.realised += valueAt(c.potential.realised, yi) ?? 0; }
+    out.emissions += valueAt(c.inventory.emissions, yi) ?? 0;
   }
-  return { absorbed, avoided, committed: absorbed + avoided, realised, target };
+  return out;
 }
 
 export type Status = "reached" | "on-track" | "behind" | "off-track" | "not-started" | "no-target";

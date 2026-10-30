@@ -1,0 +1,69 @@
+# Which quantification module each carbon-tagged indicator uses, and with
+# which factors from factors.yml. Indicators not listed produce no carbon.
+#
+# Ledgers:
+#   inventory    — stock changes only (GHG Protocol Land Sector & Removals)
+#   intervention — net GHG benefit vs baseline, after leakage and buffer
+#   indicative   — shown separately, never added to a headline (soil carbon
+#                  without sampling)
+#   potential    — shown separately, ex-post only (displaced fuelwood)
+
+FOR-01:
+  module: arr
+  label: Assisted natural regeneration
+  system: permanent
+  growth: g_anr                 # t d.m./ha/yr above ground, by zone
+  cap: cmax_anr_gain            # tC/ha gain ceiling
+  buffer: buffer_arr_fire
+  leakage: leakage_arr
+  reference: "VM0047 v1.1 (ARR); IPCC 2019 Table 4.9"
+
+FOR-02:
+  module: arr
+  label: Tree plantations (wood energy / timber)
+  system: rotational
+  growth: g_plantation
+  rotation: rotation_woodenergy
+  buffer: buffer_arr
+  leakage: leakage_arr
+  fuelwood: true                # displaced non-renewable wood, potential only
+  reference: "VM0047 v1.1; VCS AFOLU long-term average rule; IPCC 2019 Table 4.10"
+
+AGR-03:
+  module: arr
+  label: Agroforestry (alley cropping, acacia–cassava)
+  system: rotational
+  growth: g_alley               # tC/ha/yr incl. below ground
+  rotation: rotation_woodenergy
+  buffer: buffer_arr
+  leakage: leakage_arr
+  fuelwood: true
+  reference: "VM0047 v1.1; IPCC 2019 Table 5.2"
+
+AGR-02:
+  module: arr
+  label: Deforestation-free perennial crops (shaded)
+  system: permanent
+  growth: g_shaded_perennial
+  maturity: maturity_perennial
+  buffer: buffer_arr
+  leakage: leakage_arr
+  reference: "VM0047 v1.1; IPCC 2019 Tables 5.1–5.2"
+
+AGR-01:
+  module: alm
+  label: Improved food crops (soil carbon, indicative)
+  ledger: indicative
+  reference: "VM0042 v2.1; IPCC 2019 Tables 2.3 and 5.5"
+
+ENR-01:
+  module: cooking
+  label: Improved and clean cooking devices
+  reference: "Gold Standard TPDDTEC v4 / Verra VM0050 structure; CDM TOOL33 defaults; IPCC 2006 Vol. 2 Table 2.5"
+
+FOR-04:
+  module: redd
+  label: Forest under conservation (avoided unplanned deforestation)
+  buffer: buffer_redd
+  leakage: leakage_redd
+  reference: "VM0048 v1.0 with jurisdictional allocated baseline (VMD0055); DRC FREL 2018"

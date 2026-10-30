@@ -59,10 +59,30 @@ describe("statusOf", () => {
 });
 
 describe("co2Aggregate", () => {
-  it("sums absorbed, avoided, realised and target", () => {
-    const co2 = { absorbed: [10, 20], avoided: [5, 10], realised: [1, 3], targetAbsorbed: 100, targetAvoided: 50 };
+  const co2 = {
+    archetype: "arr" as const, ledger: "intervention" as const, stratum: "DRC/moist/lac",
+    inventory: { expected: [100, 200], realised: [0, 50], emissions: [0, 5] },
+    intervention: { expected: [80, 160], realised: [0, 40] },
+    indicative: null, potential: { expected: [10, 20], realised: [0, 0] },
+    target: { inventory: 1000, intervention: 800 },
+    perUnit: { inventory: 10, intervention: 8, indicative: 0, potential: 1 },
+    band: { inventory: [0.5, 1.5] as [number, number], intervention: [0.5, 1.5] as [number, number], indicative: [1, 1] as [number, number], potential: [0.1, 2] as [number, number] },
+    tier: 1, defaults: [],
+  };
+  it("sums each ledger separately and never nets them", () => {
     const a = co2Aggregate([rec([1, 2], 10, { co2 }), rec([1], 1)], 1);
-    expect(a).toEqual({ absorbed: 20, avoided: 10, committed: 30, realised: 3, target: 150 });
+    expect(a.inventory.expected).toBe(200);
+    expect(a.inventory.realised).toBe(50);
+    expect(a.intervention.expected).toBe(160);
+    expect(a.intervention.low).toBe(80);
+    expect(a.intervention.high).toBe(240);
+    expect(a.intervention.target).toBe(800);
+    expect(a.potential.expected).toBe(20);
+    expect(a.emissions).toBe(5);
+    expect(a.records).toBe(1);
+  });
+  it("carries the latest value forward", () => {
+    expect(co2Aggregate([rec([1], 1, { co2: { ...co2, inventory: { expected: [100, null], realised: [0, null], emissions: [0, null] } } })], 1).inventory.expected).toBe(100);
   });
 });
 
