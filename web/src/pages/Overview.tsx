@@ -12,8 +12,8 @@ import { Chart } from "../components/Chart";
 import { AfricaMap, MapLegend, type MapDatum } from "../components/AfricaMap";
 import { Link } from "../components/Shell";
 import { ChartCard, CountUp, Meter, Sparkline, type Column } from "../components/ui";
-import type { DataRecord } from "../lib/types";
-import { buildInsights } from "../lib/insights";
+import type { DataRecord, Programme } from "../lib/types";
+import { buildInsights, fill } from "../lib/insights";
 
 type MapMetric = "ha" | "programmes" | "co2";
 
@@ -61,20 +61,34 @@ export function Overview() {
   }).filter((x) => x.aggs.length), [m, ix, aggs, records, years]);
 
   // Map data per country
-  const mapData: MapDatum[] = useMemo(() => m.countries.filter((c) => c.iso).map((c) => {
-    const rc = records.filter((r) => ix.countryOf(r) === c.id);
-    const ha = rc.filter((r) => m.meta.areaIndicators.includes(r.indicator)).reduce((s, r) => s + (valueAt(r.values, yi) ?? 0), 0);
-    const progs = new Set(rc.map((r) => r.programme)).size;
-    const c2 = co2Aggregate(rc, yi).intervention.expected;
-    const value = mapMetric === "ha" ? ha : mapMetric === "programmes" ? progs : c2;
-    return {
-      iso: c.iso!, label: nameOf(c), value,
-      display: mapMetric === "ha" ? `${compact(ha)} ha` : mapMetric === "programmes" ? `${progs}` : tco2(c2),
-      extra: `${progs} ${t("programmes")}`,
-    };
-  }).filter((d) => d.value > 0), [m, ix, records, yi, mapMetric]);
+  const mapData: MapDatum[] = useMemo(() => {
+    const metric = (rs: DataRecord[]) => mapMetric === "ha"
+      ? rs.filter((r) => m.meta.areaIndicators.includes(r.indicator)).reduce((s, r) => s + (valueAt(r.values, yi) ?? 0), 0)
+      : mapMetric === "programmes" ? new Set(rs.map((r) => r.programme)).size : co2Aggregate(rs, yi).intervention.expected;
+    const fmt = (v: number) => mapMetric === "ha" ? `${compact(v)} ha` : mapMetric === "programmes" ? `${v}` : tco2(v);
+    const rows = m.countries.filter((c) => c.iso).map((c) => {
+      const rc = records.filter((r) => ix.countryOf(r) === c.id);
+      const value = metric(rc);
+      const progs = new Set(rc.map((r) => r.programme));
+      const partners = new Set(rc.map((r) => r.partner)).size;
+      const top = [...byKey(rc, (r) => r.programme).entries()].map(([pid, rs]) => ({ pid, v: metric(rs) })).sort((a, b) => b.v - a.v)[0];
+      const lines: [string, string][] = [
+        [`${progs.size}`, t("programmes")], [`${partners}`, t("partners")],
+        ...(top && mapMetric !== "programmes" && top.v > 0 ? [[`${ix.programmes.get(top.pid)?.name ?? top.pid}`, `${t("Largest programme")} · ${fmt(top.v)}`] as [string, string]] : []),
+      ];
+      return { iso: c.iso!, label: nameOf(c), value, display: fmt(value), lines };
+    });
+    const total = rows.reduce((s, r) => s + r.value, 0);
+    for (const r of rows) if (r.value > 0 && total > 0) r.lines.splice(2, 0, [pct(r.value / total), t("Share of the total shown")]);
+    return rows.sort((a, b) => b.value - a.value);
+  }, [m, ix, records, yi, mapMetric]);
+  const mapMax = mapData[0]?.value ?? 0;
+  const mapFmt = (v: number) => mapMetric === "ha" ? `${compact(v)} ha` : mapMetric === "programmes" ? `${v}` : tco2(v);
   const isoToCountry = new Map(m.countries.map((c) => [c.iso, c.id]));
   const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Programmes reporting") : t("Net GHG benefit expected, full cycle");
+  const mapEmpty = mapMetric === "ha" ? t("Member state, no hectares reported") : mapMetric === "programmes" ? t("Member state, no programme reporting") : t("Member state, no GHG estimate");
+  // Programmes without a country (regional) cannot be placed on the map.
+  const regional = useMemo(() => [...new Set(records.filter((r) => !ix.countries.get(ix.countryOf(r))?.iso).map((r) => r.programme))].map((id) => ix.programmes.get(id)).filter(Boolean) as Programme[], [records, ix]);
 
   return (
     <>
@@ -178,15 +192,22 @@ export function Overview() {
       </section>
 
       <section className="section grid g-12">
-        <ChartCard className="span-7" title={t("Where programmes work")} sub={mapLabel}
+        <ChartCard className="span-7" title={t("Where programmes work")} sub={`${mapLabel} · ${t("Click a country to filter")}`}
           extra={
-            <div className="seg" role="group" aria-label={t("Map metric")} style={{ marginRight: 6 }}>
-              {(["ha", "programmes", "co2"] as MapMetric[]).map((k) => (
-                <button key={k} aria-pressed={mapMetric === k} onClick={() => setMapMetric(k)}>
-                  {k === "ha" ? "ha" : k === "programmes" ? t("Programmes") : "CO₂"}
+            <>
+              {filters.countries.length > 0 && (
+                <button className="chip-btn" onClick={() => setFilters({ countries: [] })} aria-label={t("Clear country")}>
+                  × {filters.countries.map((id) => nameOf(ix.countries.get(id) ?? { name: id })).join(", ")}
                 </button>
-              ))}
-            </div>
+              )}
+              <div className="seg" role="group" aria-label={t("Map metric")} style={{ marginRight: 6 }}>
+                {(["ha", "programmes", "co2"] as MapMetric[]).map((k) => (
+                  <button key={k} aria-pressed={mapMetric === k} onClick={() => setMapMetric(k)}>
+                    {k === "ha" ? t("Hectares") : k === "programmes" ? t("Programmes") : "CO₂"}
+                  </button>
+                ))}
+              </div>
+            </>
           }
           table={{
             cols: [
@@ -196,22 +217,31 @@ export function Overview() {
             rows: mapData,
           }}>
           {(ref) => (
-            <>
-              <AfricaMap data={mapData} metricLabel={mapLabel} height={430} chartRef={ref}
+            <div className="map-wrap">
+              <div className="map-main">
+              <AfricaMap data={mapData} metricLabel={mapLabel} emptyLabel={mapEmpty} height={440} chartRef={ref}
                 selected={filters.countries.map((id) => ix.countries.get(id)?.iso ?? "").filter(Boolean)}
                 onSelect={(iso) => {
                   const id = isoToCountry.get(iso);
                   if (!id) return;
                   setFilters({ countries: filters.countries.includes(id) ? filters.countries.filter((c) => c !== id) : [id] });
                 }} />
-              <MapLegend label={mapLabel} min={mapMetric === "programmes" ? "1" : "0"}
-                max={mapData.length ? mapData.reduce((a, b) => (b.value > a.value ? b : a)).display : "–"} />
-              {!mapData.length && mapMetric === "ha" && records.length > 0 && (
-                <div className="small ink-2" style={{ textAlign: "center", marginTop: 4 }}>
+              </div>
+              <aside className="map-side" aria-label={t("Legend")}>
+              <MapLegend label={mapLabel} max={mapMax} fmt={mapFmt} emptyLabel={mapEmpty} />
+              {regional.length > 0 && (
+                <div className="map-note">
+                  {fill(t(regional.length === 1 ? "{n} regional programme is not placed on the map:" : "{n} regional programmes are not placed on the map:"), { n: regional.length })}{" "}
+                  {regional.map((p, i) => <span key={p.id}>{i > 0 && ", "}<Link to={{ page: "programme", id: p.id }}>{p.name}</Link></span>)}
+                </div>
+              )}
+              {mapMax <= 0 && mapMetric === "ha" && records.length > 0 && (
+                <div className="map-note">
                   {t("No hectares reported under the current filters.")} <button className="link-btn" onClick={() => setMapMetric("programmes")}>{t("Show programmes instead")}</button>
                 </div>
               )}
-            </>
+              </aside>
+            </div>
           )}
         </ChartCard>
         <TopProgrammes records={records} yi={yi} />

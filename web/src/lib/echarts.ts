@@ -1,12 +1,12 @@
 import * as echarts from "echarts/core";
-import { BarChart, CustomChart, LineChart, MapChart, TreemapChart } from "echarts/charts";
+import { BarChart, CustomChart, LineChart, MapChart, ScatterChart, TreemapChart } from "echarts/charts";
 import {
   GridComponent, TooltipComponent, MarkLineComponent, MarkAreaComponent, VisualMapComponent, GeoComponent,
 } from "echarts/components";
 import { CanvasRenderer } from "echarts/renderers";
 
 echarts.use([
-  BarChart, CustomChart, LineChart, MapChart, TreemapChart,
+  BarChart, CustomChart, LineChart, MapChart, ScatterChart, TreemapChart,
   GridComponent, TooltipComponent, MarkLineComponent, MarkAreaComponent, VisualMapComponent, GeoComponent,
   CanvasRenderer,
 ]);
