@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, type ReactNode } from "react";
 import { useApp } from "../lib/state";
 import { nameOf, t } from "../lib/i18n";
 import { co2Aggregate, coverage, indicatorAggs, outcomeAchievement, statusOf, valueAt, yearIndex, type IndicatorAgg } from "../lib/model";
@@ -7,6 +7,7 @@ import { outcomeVar } from "../lib/colors";
 import { Link } from "../components/Shell";
 import { MiniMeter, StatusBadge } from "../components/ui";
 import type { Programme } from "../lib/types";
+import { CarbonTip } from "../components/CarbonTip";
 
 /** Two programmes side by side. Route: #/compare/<idA>~<idB> */
 export function Compare({ id }: { id: string }) {
@@ -40,8 +41,8 @@ export function Compare({ id }: { id: string }) {
     ? <div><b className="num">{withUnit(agg.value, agg.indicator.unit, lang, true)}</b><div><MiniMeter value={agg.achievement} color={outcomeVar(m, agg.indicator.outcome)} /></div></div>
     : <span className="muted">–</span>;
 
-  const Tile = ({ l, v, d }: { l: string; v: string; d?: string }) => (
-    <div className="card tile"><div className="l">{l}</div><div className="v">{v}</div>{d && <div className="d">{d}</div>}</div>
+  const Tile = ({ l, v, d, tip }: { l: string; v: string; d?: string; tip?: ReactNode }) => (
+    <div className="card tile"><div className="l">{l}{tip}</div><div className="v">{v}</div>{d && <div className="d">{d}</div>}</div>
   );
 
   return (
@@ -82,7 +83,7 @@ export function Compare({ id }: { id: string }) {
                 </div>
                 <div className="grid g-2" style={{ marginTop: 12 }}>
                   <Tile l={t("Average achievement")} v={pct(S.ach)} d={`${S.aggs.length} ${t("indicators")} · ${S.recs.length} ${t("rows")}`} />
-                  <Tile l={t("Net GHG benefit expected, full cycle")} v={S.co2.intervention.expected ? tco2(S.co2.intervention.expected) : "–"} d={`${t("Realised to date")}: ${S.co2.intervention.realised ? tco2(S.co2.intervention.realised) : "–"}`} />
+                  <Tile tip={<CarbonTip term="net" />} l={t("Net GHG benefit expected, full cycle")} v={S.co2.intervention.expected ? tco2(S.co2.intervention.expected) : "–"} d={`${t("Realised to date")}: ${S.co2.intervention.realised ? tco2(S.co2.intervention.realised) : "–"}`} />
                   <Tile l={t("Approved budget")} v={S.approved ? `$${compact(S.approved)}` : "–"} d={S.approved ? `${pct(S.spent / S.approved)} ${t("spent")}` : t("Not linked to an MPTF project yet (config/programmes.yml).")} />
                   <Tile l={t("Expected indicators reported")} v={S.cov.expected ? `${S.cov.reported} / ${S.cov.expected}` : "–"} d={t("mandatory or required by activity")} />
                 </div>

@@ -540,3 +540,17 @@ details.q .body { padding: 0 16px 16px; }
   .fs-chip.on { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
   .mini-meter .fill, .dot, .status svg { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
 }
+
+/* ───────────────────────── Info icon ───────────────────────── */
+.info { position: relative; display: inline-flex; vertical-align: middle; margin-left: 4px; }
+.info-btn { width: 18px; height: 18px; padding: 0; border-radius: 50%; border: 1px solid currentColor; background: transparent; color: inherit; opacity: 0.6; display: inline-flex; align-items: center; justify-content: center; cursor: pointer; }
+.info-btn svg { width: 11px; height: 11px; }
+.info-btn:hover, .info-btn:focus-visible, .info.open .info-btn { opacity: 1; }
+.info-btn:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+.info.light .info-btn:focus-visible { outline-color: #fff; }
+.info-pop { position: fixed; z-index: 60; width: min(340px, calc(100vw - 32px)); background: var(--surface); color: var(--ink); border: 1px solid var(--border-strong); border-radius: 10px; padding: 10px 12px; box-shadow: 0 12px 32px -12px rgba(0, 0, 0, 0.4); font-size: 12.5px; line-height: 1.5; font-weight: 400; letter-spacing: 0; text-align: left; text-transform: none; white-space: normal; }
+.info-pop b { display: block; font-weight: 650; margin-bottom: 4px; color: var(--ink); }
+.info-pop span { display: block; color: var(--ink-2); }
+.info-pop[hidden] { display: none; }
+.hero .info-pop { color: var(--ink); }
+@media print { .info { display: none; } }

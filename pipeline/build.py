@@ -611,7 +611,6 @@ def to_payload(ds: Dataset, config: Config, source_name: str, projects: list[dic
         "carbon": engine.describe(programmes, projects),
         "headline": {
             "beneficiaries": config.headline["beneficiaries"],
-            "anticipatedCo2": config.headline["anticipated_co2"],
         },
     }
 
