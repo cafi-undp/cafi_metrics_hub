@@ -1,5 +1,6 @@
 import { useMemo, useState } from "react";
 import { useApp } from "../lib/state";
+import { CarbonTip } from "../components/CarbonTip";
 import { useFiltered } from "../lib/hooks";
 import { nameOf, t } from "../lib/i18n";
 import { byKey, co2Aggregate, type LedgerTotals } from "../lib/model";
@@ -29,7 +30,6 @@ export function Climate() {
   const [basis, setBasis] = useState<Basis>("expected");
   const co2Recs = useMemo(() => records.filter((r) => r.co2), [records]);
   const total = co2Aggregate(co2Recs, yi);
-  const anticipated = m.headline.anticipatedCo2.value;
   const sel = total[ledger];
   const other: Basis = basis === "expected" ? "realised" : "expected";
   const [lo, hi] = band(sel, basis);
@@ -71,10 +71,10 @@ export function Climate() {
           <h1>{t("Climate impact")}</h1>
           <p>
             {t("Net GHG benefit expected, full cycle")}: <b>{tco2(total.intervention.expected)}</b> ({t("p5–p95 band")} {compact(total.intervention.low, 2)}–{compact(total.intervention.high, 2)}) ·{" "}
-            {pct(total.intervention.expected / anticipated, 1)} {t("of anticipated portfolio total")} ({compact(anticipated)} tCO₂e).
+            {total.intervention.target > 0 ? pct(total.intervention.expected / total.intervention.target, 1) : "–"} {t("of what the programmes' final targets would deliver")} ({compact(total.intervention.target)} tCO₂e)<CarbonTip term="target" />.
           </p>
           <p className="small" style={{ marginTop: 6 }}>
-            {ledger === "inventory" ? t("Stock changes within the boundary, no baseline, no netting") : t("Net benefit against a baseline, after leakage and non-permanence buffer")}.
+            {ledger === "inventory" ? t("Stock changes within the boundary, no baseline, no netting") : t("Net benefit against a baseline, after leakage and non-permanence buffer")}.<CarbonTip term="ledgers" />
           </p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
@@ -95,27 +95,27 @@ export function Climate() {
 
       <div className="grid g-4">
         <div className="card tile" style={{ borderTop: `3px solid ${LEDGER_CSS[ledger]}` }}>
-          <div className="l">{t(ledger === "inventory" ? "Removals" : "Net GHG benefit")} · {basis === "expected" ? t("Expected") : t("Realised")}</div>
+          <div className="l">{t(ledger === "inventory" ? "Removals" : "Net GHG benefit")}<CarbonTip term={ledger === "inventory" ? "removals" : "net"} /> · {basis === "expected" ? t("Expected") : t("Realised")}<CarbonTip term={basis} /></div>
           <div className="v"><CountUp value={pick(sel, basis)} format={(v) => compact(v, 2)} /><small>tCO₂e</small></div>
-          <div className="d">{t("p5–p95 band")}: {compact(lo, 2)} – {compact(hi, 2)}</div>
+          <div className="d">{t("p5–p95 band")}: {compact(lo, 2)} – {compact(hi, 2)}<CarbonTip term="band" /></div>
           <Meter value={sel.target ? pick(sel, basis) / sel.target : null} color={LEDGER_CSS[ledger]}
-            left={<>{pct(sel.target ? pick(sel, basis) / sel.target : null)} {t("of target")}</>} right={<>{compact(sel.target)}</>} />
+            left={<>{pct(sel.target ? pick(sel, basis) / sel.target : null)} {t("of target")}<CarbonTip term="target" /></>} right={<>{compact(sel.target)}</>} />
         </div>
         <div className="card tile">
-          <div className="l">{t(ledger === "inventory" ? "Removals" : "Net GHG benefit")} · {other === "expected" ? t("Expected") : t("Realised")}</div>
+          <div className="l">{t(ledger === "inventory" ? "Removals" : "Net GHG benefit")} · {other === "expected" ? t("Expected") : t("Realised")}<CarbonTip term={other} /></div>
           <div className="v">{compact(pick(sel, other), 2)}<small>tCO₂e</small></div>
           <div className="d">{t("p5–p95 band")}: {compact(band(sel, other)[0], 2)} – {compact(band(sel, other)[1], 2)}</div>
         </div>
         <div className="card tile">
-          <div className="l">{ledger === "inventory" ? t("Net GHG benefit") : t("Removals")} · {basis === "expected" ? t("Expected") : t("Realised")}</div>
+          <div className="l">{ledger === "inventory" ? t("Net GHG benefit") : t("Removals")}<CarbonTip term={ledger === "inventory" ? "net" : "removals"} /> · {basis === "expected" ? t("Expected") : t("Realised")}</div>
           <div className="v">{compact(pick(total[ledger === "inventory" ? "intervention" : "inventory"], basis), 2)}<small>tCO₂e</small></div>
-          <div className="d">{t("Emissions booked (reversals)")}: {compact(total.emissions, 2)} tCO₂e</div>
+          <div className="d">{t("Emissions booked (reversals)")}: {compact(total.emissions, 2)} tCO₂e<CarbonTip term="emissions" /></div>
         </div>
         <div className="card tile">
           <div className="l">{t("not in the headline")}</div>
           <div className="small" style={{ marginTop: 8 }}>
-            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("Indicative: soil carbon")}</span><b>{compact(basis === "expected" ? total.indicative.expected : total.indicative.realised, 2)}</b></div>
-            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}><span>{t("Potential: displaced fuelwood")}</span><b>{compact(basis === "expected" ? total.potential.expected : total.potential.realised, 2)}</b></div>
+            <div style={{ display: "flex", justifyContent: "space-between" }}><span>{t("Indicative: soil carbon")}<CarbonTip term="indicative" /></span><b>{compact(basis === "expected" ? total.indicative.expected : total.indicative.realised, 2)}</b></div>
+            <div style={{ display: "flex", justifyContent: "space-between", marginTop: 4 }}><span>{t("Potential: displaced fuelwood")}<CarbonTip term="potential" /></span><b>{compact(basis === "expected" ? total.potential.expected : total.potential.realised, 2)}</b></div>
           </div>
         </div>
       </div>

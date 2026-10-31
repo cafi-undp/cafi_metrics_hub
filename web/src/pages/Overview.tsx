@@ -14,6 +14,7 @@ import { Link } from "../components/Shell";
 import { ChartCard, CountUp, Meter, Sparkline, type Column } from "../components/ui";
 import type { DataRecord, Programme } from "../lib/types";
 import { buildInsights, fill } from "../lib/insights";
+import { CarbonTip } from "../components/CarbonTip";
 
 type MapMetric = "ha" | "programmes" | "co2";
 
@@ -47,8 +48,8 @@ export function Overview() {
   const active = [...progIds].filter((id) => activeIn(ix.programmes.get(id)!, year)).length;
   const partners = new Set(records.map((r) => r.partner)).size;
   const countries = new Set(records.map((r) => ix.countryOf(r))).size;
-  const anticipated = m.headline.anticipatedCo2.value;
   const net = co2.intervention.expected;
+  const target = co2.intervention.target; // the programmes' final targets, in carbon
   const mega = net >= 1e6;
   const filtered = filters.countries.length + filters.partners.length + filters.programmes.length > 0;
 
@@ -104,13 +105,13 @@ export function Overview() {
               <div className="big">
                 <CountUp value={net / (mega ? 1e6 : 1e3)} format={(v) => num(v, 1)} /><small>{mega ? "Mt" : "kt"} CO₂e</small>
               </div>
-              <div className="cap">{t("Net GHG benefit expected, full cycle")} · {t("range")} {compact(co2.intervention.low, 2)}–{compact(co2.intervention.high, 2)}</div>
-              <div className="cap" style={{ marginTop: 2 }}>{t("Removals in the inventory ledger")}: {compact(co2.inventory.expected, 2)} tCO₂e · {t("Realised to date")}: {compact(co2.intervention.realised, 2)}</div>
+              <div className="cap">{t("Net GHG benefit expected, full cycle")}<CarbonTip term="net" light /> · {t("range")} {compact(co2.intervention.low, 2)}–{compact(co2.intervention.high, 2)}<CarbonTip term="band" light /></div>
+              <div className="cap" style={{ marginTop: 2 }}>{t("Removals in the inventory ledger")}: {compact(co2.inventory.expected, 2)} tCO₂e<CarbonTip term="removals" light /> · {t("Realised to date")}: {compact(co2.intervention.realised, 2)}<CarbonTip term="realised" light /></div>
               <div className="hero-meter">
-                <div className="track"><div className="fill" style={{ width: `${anticipated > 0 ? Math.min(100, (net / anticipated) * 100) : 0}%` }} /></div>
+                <div className="track"><div className="fill" style={{ width: `${target > 0 ? Math.min(100, (net / target) * 100) : 0}%` }} /></div>
                 <div className="row">
-                  <span>{anticipated > 0 ? pct(net / anticipated, 1) : "–"} {t("of anticipated portfolio total")}</span>
-                  <span>{compact(anticipated)} tCO₂e</span>
+                  <span>{target > 0 ? pct(net / target, 1) : "–"} {t("of what the programmes' final targets would deliver")}<CarbonTip term="target" light /></span>
+                  <span>{compact(target)} tCO₂e</span>
                 </div>
               </div>
             </div>

@@ -199,7 +199,7 @@ export interface Metrics {
   projects: Project[];
   activities: Activity[];
   carbon: CarbonMeta;
-  headline: { beneficiaries: HeadlineFigure; anticipatedCo2: HeadlineFigure };
+  headline: { beneficiaries: HeadlineFigure };
 }
 
 export interface QualityItem {

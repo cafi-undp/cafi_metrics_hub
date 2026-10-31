@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useId, useMemo, useRef, useState } from "react";
 import type { ReactNode } from "react";
 import type { ECharts } from "echarts/core";
 import { t } from "../lib/i18n";
@@ -271,5 +271,52 @@ export function Legend({ items, kind = "rect" }: { items: { label: string; color
         </span>
       ))}
     </div>
+  );
+}
+
+/**
+ * Small info icon with an explanation. Opens on hover and focus, pins on click (touch), closes on Escape
+ * or a click elsewhere, and flips to the left when it would leave the viewport. Hidden in print.
+ */
+export function InfoTip({ title, text, light = false }: { title: string; text: string; light?: boolean }) {
+  const [pinned, setPinned] = useState(false);
+  const [hover, setHover] = useState(false);
+  const [pos, setPos] = useState<{ left: number; top: number } | null>(null);
+  const id = useId();
+  const ref = useRef<HTMLSpanElement>(null);
+  const pop = useRef<HTMLSpanElement>(null);
+  const open = pinned || hover;
+  useEffect(() => {
+    if (!open) return;
+    // Fixed to the viewport so no card or hero can clip it: below the icon, or above when there is no room below.
+    const b = ref.current?.getBoundingClientRect();
+    const w = pop.current?.offsetWidth ?? 0;
+    const h = pop.current?.offsetHeight ?? 0;
+    if (b) {
+      const left = Math.max(8, Math.min(b.left, window.innerWidth - 8 - w));
+      let top = b.bottom + 8;
+      if (top + h > window.innerHeight - 8 && b.top - 8 - h >= 8) top = b.top - 8 - h;
+      setPos({ left, top });
+    }
+    const onScroll = () => { setPinned(false); setHover(false); };
+    window.addEventListener("scroll", onScroll, true);
+    const onDoc = (e: MouseEvent) => { if (!ref.current?.contains(e.target as Node)) setPinned(false); };
+    const onKey = (e: KeyboardEvent) => { if (e.key === "Escape") { setPinned(false); setHover(false); } };
+    document.addEventListener("mousedown", onDoc);
+    document.addEventListener("keydown", onKey);
+    return () => { document.removeEventListener("mousedown", onDoc); document.removeEventListener("keydown", onKey); window.removeEventListener("scroll", onScroll, true); };
+  }, [open]);
+  return (
+    <span className={`info ${open ? "open" : ""} ${light ? "light" : ""}`} ref={ref}
+      onMouseEnter={() => setHover(true)} onMouseLeave={() => setHover(false)}>
+      <button type="button" className="info-btn" aria-label={`${t("About")}: ${title}`} aria-expanded={open} aria-controls={id}
+        onClick={() => setPinned((v) => !v)} onFocus={() => setHover(true)} onBlur={() => setHover(false)}>
+        <IconInfo />
+      </button>
+      <span role="tooltip" id={id} ref={pop} className="info-pop" style={pos ? { left: pos.left, top: pos.top } : { left: 8, top: 8, visibility: "hidden" }} hidden={!open}>
+        <b>{title}</b>
+        <span>{text}</span>
+      </span>
+    </span>
   );
 }
