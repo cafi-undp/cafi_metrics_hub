@@ -39,6 +39,15 @@ The project list lives in `data/MPTF_Projects.xlsx` (the MPTF Gateway export, an
 
 New results rows can use the standard codes directly (`GOV-03 Operational local governance structures`); rows with the old numbering are re-coded automatically.
 
+**Partner indicator annexes.** The "Annexe 1 – Indicateurs projets à approche territoriale" and "Annexe 2 – Indicateurs transversaux" that partners attach to their reports are merged into `data/ProjectData.xlsx`, which stays the single source:
+
+```bash
+python -m pipeline.merge_annexes            # dry run: what would change
+python -m pipeline.merge_annexes --write    # update the workbook and docs/annex-import.md
+```
+
+Add a new annex by copying it into `data/annexes/` and listing it in `config/annexes.yml` with its programme and reporting date. The importer maps the annex codes to the standard indicators, reads columns marked *en cumulatif* as running totals, sums per-period values only when they cannot be a running total, never overwrites a workbook cell, and only adds years after a programme's last report. New hectare rows for a programme that already reports area, implausibly large people counts, and rows whose unit contradicts the standard unit are held for review. Every written cell is logged in the workbook's `AnnexImport` sheet, and `docs/annex-import.md` lists the cells added, the conflicts with the workbook (kept) and the rows held for review.
+
 **Option 1: commit the workbook.** Replace `data/ProjectData.xlsx` and push to `main` (or open a pull request). CI validates it, and the site republishes in about 2 minutes.
 
 **Option 2: let it pull from SharePoint daily.** Register an app in Entra ID with the Graph application permission `Sites.Selected`, granted on the CAFI site only. Then add these in the GitHub repo under Settings → Secrets and variables → Actions:
@@ -90,6 +99,7 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 | `config/carbon/claims.yml` | Claims register: projects whose results are also accounted elsewhere (national programme, company inventory, credits); private-sector projects get a derived entry to confirm |
 | `config/carbon/overrides.yml` | Programme-measured carbon parameters (Tier 3), e.g. a kitchen performance test result, which replace the library default for that programme |
 | `config/headline.yml` | Figures not in the workbook (beneficiaries) |
+| `config/annexes.yml` | Partner indicator annexes merged into the workbook, with their programme and reporting date |
 
 ### Calculation rules
 
@@ -139,8 +149,8 @@ GitHub Pages on a private repository needs a paid GitHub plan. You can also depl
 
 ```
 config/            indicator catalogue, CO₂ factors, headline figures
-data/              ProjectData.xlsx (source workbook)
-pipeline/          build.py (validate + transform), quality.py, fetch_sharepoint.py
+data/              ProjectData.xlsx (source workbook), annexes/ (partner indicator annexes merged into it)
+pipeline/          build.py (validate + transform), quality.py, fetch_sharepoint.py, annexes.py + merge_annexes.py (annex import)
 tests/             pipeline tests (pytest)
 web/src/lib/       data model + aggregation rules (model.ts, tested), insights.ts (tested), i18n, state/URL sync
 web/src/components charts, filters, command palette, tables

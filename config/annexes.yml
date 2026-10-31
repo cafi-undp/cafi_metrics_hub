@@ -1,0 +1,105 @@
+# Indicator annexes ("Annexe 1 – Indicateurs projets à approche territoriale",
+# "Annexe 2 – Indicateurs transversaux") merged into data/ProjectData.xlsx by
+#   python -m pipeline.merge_annexes
+# Files are copies from the CAFI Drive "Country & Regional Documents", kept in data/annexes/
+# under the name given here. `programme` is the value of the Programme column in
+# ProjectData.xlsx; a programme not yet in the workbook needs the `new:` block.
+# Later files (by `as_of`) win for the years they report.
+
+new_programmes:
+  OAF Zero-deforestation agriculture (PAZD):
+    country: DRC
+    partner: OAF
+    mptf: [140885]
+    start: 2024
+    end: 2027
+  Civil society support (PASC):
+    country: DRC
+    partner: CIFOR / GTCR-R
+    mptf: [141166]
+    start: 2025
+    end: 2028
+  Forest research and monitoring:
+    country: Gabon
+    partner: TNC
+    mptf: [133561]
+    start: 2022
+    end: 2027
+  CPIC Conservation Initiative:
+    country: Regional
+    partner: IUCN
+    mptf: [131425]
+    start: 2022
+    end: 2027
+  Canopy Trust:
+    country: Regional
+    partner: Catalytic Finance Foundation
+    mptf: [141415]
+    start: 2025
+    end: 2030
+  Coordination support (Congo):
+    country: Congo
+    partner: UNDP
+    mptf: [129481]
+    start: 2021
+    end: 2025
+  PGDF:
+    country: DRC
+    partner: AFD
+    mptf: [123066]
+    start: 2020
+    end: 2027
+
+files:
+  # --- DRC -------------------------------------------------------------------------------
+  - {id: 10pRi68Sg46d3XDEeXr9LjjE-xP0bl6my, file: PIREDD-Kwilu_A1_2023.xlsx, programme: PIREDD Kwilu, as_of: 2023-12-31}
+  - {id: 1vGRey96EKjbzS1gb7yVSmEGvGmp4H8Ym, file: PIREDD-MaiNdombe_A1_2023.xlsx, programme: PIREDD Mai-Ndombe, as_of: 2023-12-31}
+  - {id: 1FKmhuu1UamudjZRkySm8-V33dJcMDkHL, file: PIREDD-MaiNdombe_A2_2023.xlsx, programme: PIREDD Mai-Ndombe, as_of: 2023-12-31}
+  - {id: 16kESTJTynTt9QvtMVbheA5xLY3VdQwqs, file: PIREDD-Oriental_A1_2023.xlsx, programme: PIREDD Oriental, as_of: 2023-12-31}
+  - {id: 1XIjcN2c_M2I5g0mL70NLEtME5-Lnt-Et, file: PIREDD-Oriental_A2_2023.xlsx, programme: PIREDD Oriental, as_of: 2023-12-31}
+  - {id: 1jy96MAfK34iyimtJlyJSKiakHy2ymkje, file: PIREDD-SudUbangi2_A1_2026S1.xlsx, programme: PIREDD Sud Ubangi 2, as_of: 2026-06-30}
+  - {id: 1k9Tak-2TlTR-vxYd6P8Vfzm3qSaUczNW, file: PSFD_A1_2024S1.xlsx, programme: PSFD 1, as_of: 2024-06-30}
+  - {id: 1JlmTrmvcI9G_nwQssGujN3GGpAvBi4Og, file: PSFD_A2_2024S1.xlsx, programme: PSFD 1, as_of: 2024-06-30}
+  - {id: 1YAPczCDLe7QkrMPMmCFwpHnBgrK5f2qU, file: PSFD-Habilitant_A2_2024S1.xlsx, programme: PSFD 1, as_of: 2024-06-30}
+  - {id: 1tfPJEyUhzwCRrhqOqCRbFHieX5pqeT5y, file: PSFD_A1_2024.xlsx, programme: PSFD 1, as_of: 2024-12-31}
+  - {id: 1V0aMjXBgsCpRv-ATFViLY0_mF-fFcV2Y, file: PSFD_A1_2025S1.xlsx, programme: PSFD 1, as_of: 2025-06-30}
+  - {id: 1Um2bSdhvkscXf5HLUPocE3vy97qPPp_l, file: PSFD_A2_2025S1.xlsx, programme: PSFD 1, as_of: 2025-06-30}
+  - {id: 18YNMoB4YzMsLp0oSBNz5jlX-3m_64O7p, file: PSFD_A1_2026S1.xlsx, programme: PSFD 1, as_of: 2026-06-30}
+  - {id: 109PJqTP_bRL4ZJ47ssfKrvy6sHdSgGiG, file: PSFD_A2_2026S1.xlsx, programme: PSFD 1, as_of: 2026-06-30}
+  - {id: 1Gbcm1EWtAlTsDj1N2cS_VVSLvUZDFv6m, file: PGDF_A2_2024S1.xlsx, programme: PGDF, as_of: 2024-06-30}
+  - {id: 1TywlW8c7antSOCLIca3b7oEYs2Ij4nwz, file: PASC_A2_2025.xlsx, programme: Civil society support (PASC), as_of: 2025-12-31}
+  - {id: 1Srng7X-3-apnl9zJbnJMibJzWgdJFhbh, file: PASC_A2_2026S1.xlsx, programme: Civil society support (PASC), as_of: 2026-06-30}
+  # One Acre Fund: PAZD (CAFI, 140885) and PAPS (FONAREDD, 141182 = the workbook's Kongo Central programme)
+  - {id: 1-XY4orsF_1uUC59naRqtsJbVPe-GuZKJ, file: OAF-PAZD_A1_2025.xlsx, programme: OAF Zero-deforestation agriculture (PAZD), as_of: 2025-12-31}
+  - {id: 1t7MbRukfEG5KimlrRz_K2hfXhW0RqaSU, file: OAF-PAZD_A1_2026S1.xlsx, programme: OAF Zero-deforestation agriculture (PAZD), as_of: 2026-06-30}
+  - {id: 1buvScSApHHXsRwuM0FKMLrX0JMoXMDay, file: OAF-PAPS_A1_2026S1.xlsx, programme: Agriculture Paysanne en Savane dans le Kongo Central (OAF), as_of: 2026-06-30}
+  # --- Cameroon --------------------------------------------------------------------------
+  - {id: 1z9b_vEiTKjiDXZ0tvvxkThUSVa17cJ2u, file: PRCAT_A1_2026S1.xlsx, programme: Land Use Plan Support, as_of: 2026-06-30}
+  - {id: 1LQ1mbaw8FkqsllBlO50mcaWkBzr0BN1j, file: PGIP-GrandMbam_A1_2026S1.xlsx, programme: Grand Mbam, as_of: 2026-06-30}
+  # --- Republic of Congo -----------------------------------------------------------------
+  - {id: 19an4C1MdfElFza90BRBsoRTTfwcLb_cD, file: PROREP_A1_2023.xlsx, programme: PROREP, as_of: 2023-12-31}
+  - {id: 1mdAHLrVTrR17_swUQ6RHTBzZvYeFpMym, file: PROREP_A1_2024S1.xlsx, programme: PROREP, as_of: 2024-06-30}
+  - {id: 1EfKYydwZXoPWjAIK2YD62NaONHAaYmYz, file: PROREP_A1_2024.xlsx, programme: PROREP, as_of: 2024-12-31}
+  - {id: 1dNNfKOznH7zMlAk5bqdJ1AYKV_lHu5p2, file: PROREP_A1_2025.xlsx, programme: PROREP, as_of: 2025-12-31}
+  - {id: 148E_jEOJohWKTYpFhdBf2z759mst6ugQ, file: Coordination-Congo_A2_2024S1.xlsx, programme: Coordination support (Congo), as_of: 2024-06-30}
+  # --- Gabon -----------------------------------------------------------------------------
+  - {id: 12ISsymtSj6piUeKy0h1KXUbf6r1fo9Bu, file: UrbanGreening-Botanic_A2_2024S1.xlsx, programme: Urban greening, as_of: 2024-06-30}
+  - {id: 1Cs8JXQStbFTBuOEVYISJTXd0JcKrx8FY, file: UrbanGreening_A2_2024S1.xlsx, programme: Urban greening, as_of: 2024-06-30}
+  - {id: 12W1V2FI8pGnkHXG7kcudwtEXCOEmtvSa, file: UrbanGreening_A2_2024.xlsx, programme: Urban greening, as_of: 2024-12-31}
+  - {id: 1uhnqJQRER8rlATRtAY8tPM5w8DsuriaV, file: UrbanGreening_A2_2025S1.xlsx, programme: Urban greening, as_of: 2025-06-30}
+  - {id: 1axLvpmE47SbECoTIvSUhV0sxS7mSN15r, file: UrbanGreening_A2_2025.xlsx, programme: Urban greening, as_of: 2025-12-31}
+  - {id: 1DiE1cVLB7M4bhjV8wVN1uJ9F-PTAsqn2, file: UrbanGreening_A2_2026S1.xlsx, programme: Urban greening, as_of: 2026-06-30}
+  - {id: 1jFmjP8pHTUBo2ucnJSmDuNskkc1_JLFy, file: TNC-Research_A2_2024S1.xlsx, programme: Forest research and monitoring, as_of: 2024-06-30}
+  - {id: 1jcBa-zcxSEY6bAWC6BuK3pj0hfj5J2CS, file: TNC-Research_A2_2025.xlsx, programme: Forest research and monitoring, as_of: 2025-12-31}
+  - {id: 1ejDsFAJosocTzlFLrvBB0_7WXEbVpatg, file: TNC-Research_A2_2026S1.xlsx, programme: Forest research and monitoring, as_of: 2026-06-30}
+  # --- Regional / Private Sector Facility --------------------------------------------------
+  - {id: 1bersi3lc6UtR11cgI50ap06_XmaorH0K, file: CPIC_A2_2023.xlsx, programme: CPIC Conservation Initiative, as_of: 2023-12-31}
+  - {id: 1CKKTq_Spj424W0zAwewFtqc3Wgj9FEfQ, file: CanopyTrust_A2_2026S1.xlsx, programme: Canopy Trust, as_of: 2026-06-30}
+
+# Not imported:
+# - 1Gh5GFoHQ2… "2024 - ANNEXE 2" in the PSFD (AFD) folder: cell-for-cell identical to the Urban greening
+#   (UNDP/UNESCO, Gabon) 2025 annexes and holds 2025 values, so it is a misfiled copy.
+# - 1e033nsbuG… "CAFI 3 Programme 4" (TNC, 2024): no values, and the programme it covers is unclear.
+# - 1spzgmBWap… "Guide - Annexe 1 - Grilles avec pondération": a scoring grid, not an indicator annex.
+# - 1Me7BazeGm… OAF PAPS 2026 S1, copy in "Deliverables": Drive refuses the download; the copy in
+#   "Annexes rapports" (1buvScSApH…) is used instead.

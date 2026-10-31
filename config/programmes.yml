@@ -21,7 +21,7 @@ LUP & Monitoring: [111269]               # check: "GABON AFD-National Planning"
 Urban greening: [133387]
 PI PUDT Kopekoba: [140280]
 PUDT: [134411]
-Agriculture Paysanne en Savane dans le Kongo Central (OAF): [141182]   # check: or 140885 (CAFI, One Acre Fund, 2024–2026)
+Agriculture Paysanne en Savane dans le Kongo Central (OAF): [141182]   # confirmed by the partner annex "FONAREDD_PAPS_OAF"; 140885 is the CAFI PAZD project
 FOREX PES: []                            # not found in the MPTF list
 PIREDD Equateur: [117600]
 PIREDD Kasaï O. & Lomami: [140884]
@@ -36,3 +36,7 @@ Programme Energie 2: [141417]
 Indigenous peoples: [103851]
 PSFD 2: []                               # check: possibly 141182 (One Acre Fund, 2025–2028)
 Safeguarding & Managing PA: [133386]
+OAF Zero-deforestation agriculture (PAZD): [140885] # added from the indicator annexes
+Forest research and monitoring: [133561]  # added from the indicator annexes
+CPIC Conservation Initiative: [131425]    # added from the indicator annexes
+Coordination support (Congo): [129481]    # added from the indicator annexes
