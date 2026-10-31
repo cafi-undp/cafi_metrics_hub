@@ -7,6 +7,7 @@ import { outcomeVar } from "../lib/colors";
 import { Link } from "../components/Shell";
 import { MiniMeter, STATUS_META, StatusBadge } from "../components/ui";
 import { claimLabel } from "../components/coverage";
+import { CarbonTip } from "../components/CarbonTip";
 
 /**
  * One-page programme fact sheet, laid out for A4. "Save as PDF" uses the browser's print dialog,
@@ -57,7 +58,7 @@ export function FactSheet({ id }: { id: string }) {
 
       <div className="fs-tiles">
         <div><div className="l">{t("Average achievement")}</div><div className="v num">{pct(ach)}</div><div className="d">{aggs.length} {t("indicators")} · {recs.length} {t("rows")} · {t(STATUS_META[status].label)}</div></div>
-        <div><div className="l">{t("Net GHG benefit expected, full cycle")} <span className="pill">{t(basis)}</span></div><div className="v num">{co2.intervention.expected ? tco2(co2.intervention.expected) : "–"}</div><div className="d">{t("p5–p95 band")} {compact(co2.intervention.low, 2)}–{compact(co2.intervention.high, 2)} · {t("Realised to date")} {compact(co2.intervention.realised, 2)} · {t("Removals")} {compact(co2.inventory.expected, 2)}</div></div>
+        <div><div className="l">{t("Net GHG benefit expected, full cycle")} <span className="pill">{t(basis)}</span><CarbonTip term="net" /></div><div className="v num">{co2.intervention.expected ? tco2(co2.intervention.expected) : "–"}</div><div className="d">{t("p5–p95 band")} {compact(co2.intervention.low, 2)}–{compact(co2.intervention.high, 2)} · {t("Realised to date")} {compact(co2.intervention.realised, 2)} · {t("Removals")} {compact(co2.inventory.expected, 2)}</div></div>
         <div><div className="l">{t("Funding (MPTF)")}</div><div className="v num">{projects.length ? `$${compact(projects.reduce((s, x) => s + x.approved, 0))}` : "–"}</div><div className="d">{projects.length ? `${pct(projects.reduce((s, x) => s + x.transferred, 0) ? projects.reduce((s, x) => s + x.expenditure, 0) / projects.reduce((s, x) => s + x.transferred, 0) : null)} ${t("of transfers")} ${t("spent").toLowerCase()}` : t("Not linked to an MPTF project yet (config/programmes.yml).")}</div></div>
         <div><div className="l">{t("Expected indicators reported")}</div><div className="v num">{cov.expected ? `${cov.reported} / ${cov.expected}` : "–"}</div><div className="d">{t("mandatory or required by activity")}{cov.optionalReported ? ` · +${cov.optionalReported} ${t("optional")}` : ""}</div></div>
       </div>

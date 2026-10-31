@@ -1,5 +1,6 @@
 import { useMemo } from "react";
 import { useApp } from "../lib/state";
+import { CarbonTip } from "../components/CarbonTip";
 import { nameOf, t } from "../lib/i18n";
 import { co2Aggregate, coverage, indicatorAggs, outcomeAchievement, statusOf, valueAt, yearIndex } from "../lib/model";
 import { compact, num, pct, tco2 } from "../lib/format";
@@ -70,9 +71,9 @@ export function ProgrammeDetail({ id }: { id: string }) {
           <div className="d">{recs.length} {t("rows")}</div>
         </div>
         <div className="card tile">
-          <div className="l">{t("Net GHG benefit expected, full cycle")}{co2.records > 0 && <> <span className={`pill ${recs.some((r) => r.co2?.basis === "ex post") ? "req req-m" : ""}`}>{t(recs.some((r) => r.co2?.basis === "ex post") ? "ex post" : "ex ante")}</span></>}</div>
+          <div className="l">{t("Net GHG benefit expected, full cycle")}<CarbonTip term="net" />{co2.records > 0 && <> <span className={`pill ${recs.some((r) => r.co2?.basis === "ex post") ? "req req-m" : ""}`}>{t(recs.some((r) => r.co2?.basis === "ex post") ? "ex post" : "ex ante")}</span></>}</div>
           <div className="v">{co2.intervention.expected ? tco2(co2.intervention.expected) : "–"}</div>
-          <div className="d">{t("Realised to date")}: {co2.intervention.realised ? tco2(co2.intervention.realised) : "–"}{co2.inventory.expected ? <> · {t("Removals")}: {tco2(co2.inventory.expected)}</> : null}</div>
+          <div className="d">{t("Realised to date")}: {co2.intervention.realised ? tco2(co2.intervention.realised) : "–"}<CarbonTip term="realised" />{co2.inventory.expected ? <> · {t("Removals")}: {tco2(co2.inventory.expected)}<CarbonTip term="removals" /></> : null}</div>
         </div>
       </div>
 

@@ -23,7 +23,7 @@ const metrics = {
   ],
   projects: [], activities: [],
   carbon: { method: "2.0", gwp: { source: "", ch4: 27, n2o: 273 }, factors: [], archetypes: {}, strata: {}, claims: [], monitoring: {}, draws: 1 },
-  headline: { beneficiaries: { value: 1, label: "", label_fr: "", source: "" }, anticipatedCo2: { value: 1, label: "", label_fr: "", source: "" } },
+  headline: { beneficiaries: { value: 1, label: "", label_fr: "", source: "" } },
 } as unknown as Metrics;
 
 const quality = { generatedAt: "", source: "", summary: { error: 0, warning: 2, info: 1 }, checks: [{ id: "carbon-defaults", severity: "info", title: "", description: "", count: 3, items: [] }] } as unknown as Quality;

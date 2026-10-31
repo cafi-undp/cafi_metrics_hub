@@ -15,7 +15,7 @@ config/reference/            │   validate · re-code to standard     static si
 
 | Page | What it shows |
 |---|---|
-| **Overview** | Committed CO₂ against the portfolio target, headline tiles, **What changed in {year}** (three generated statements about the selected year: largest hectare gain, pace and silence, targets reached, climate, first-time reporters), progress per outcome, a map of the six CAFI member states with a circle per country sized by hectares, programmes or CO₂ (click a country to filter; regional programmes are listed under the map), top programmes, hectares over time, and a treemap of where the hectares are |
+| **Overview** | Expected net GHG benefit against the carbon the programmes' final targets would deliver, with an info icon on every carbon figure explaining what it measures, headline tiles, **What changed in {year}** (three generated statements about the selected year: largest hectare gain, pace and silence, targets reached, climate, first-time reporters), progress per outcome, a map of the six CAFI member states with a circle per country sized by hectares, programmes or CO₂ (click a country to filter; regional programmes are listed under the map), top programmes, hectares over time, and a treemap of where the hectares are |
 | **Brief** | Briefing mode: the key figures and the generated insights as full-width slides for a meeting, driven with ← → and Esc |
 | **Outcomes** | One tab per standard category (GOV, FOR, FIN, LUT, AGR, ENR, CLM, INC, PPL). Each reported indicator with its standard code, tier, result, target, achievement and year-on-year change; trajectory charts; programme ranking; every sub-indicator row with a status; the category's full list of standard indicators, reported or not |
 | **Programmes** | Timeline of all programme periods; cards or table with average achievement, sparkline and on-track status; a detail page per programme, with its MPTF funding (budget, transfers, spending, status) |
@@ -89,7 +89,7 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 | `config/carbon/archetypes.yml` | Which quantification module (ARR, REDD, ALM, cooking) each carbon indicator uses |
 | `config/carbon/claims.yml` | Claims register: projects whose results are also accounted elsewhere (national programme, company inventory, credits); private-sector projects get a derived entry to confirm |
 | `config/carbon/overrides.yml` | Programme-measured carbon parameters (Tier 3), e.g. a kitchen performance test result, which replace the library default for that programme |
-| `config/headline.yml` | Figures not in the workbook (beneficiaries, anticipated portfolio CO₂) |
+| `config/headline.yml` | Figures not in the workbook (beneficiaries) |
 
 ### Calculation rules
 
@@ -109,7 +109,7 @@ All findings appear on the dashboard's **Data quality** page with Excel row numb
 ### Changes from the Power BI report — please confirm
 
 1. The Power BI carbon coefficients were replaced by method 2.0 (above). The expected full-cycle figure moves from 31 Mt CO₂e to 13 Mt removals in the inventory ledger and 11 Mt net benefit in the intervention ledger (p5–p95 bands shown on the site) because harvested systems are time-averaged, cookstoves use the national fraction of non-renewable biomass and a five-year device life, and the 50 % avoided-deforestation add-on on agriculture is gone; natural regeneration rises.
-2. Beneficiaries and anticipated CO₂ are still constants, now in `config/headline.yml`. They need a source.
+2. Beneficiaries is still a constant, in `config/headline.yml`. It needs a source. The former "anticipated portfolio CO₂" constant (168 Mt) was removed; the carbon meter now compares the expected net benefit with the carbon the programmes' own final targets would deliver.
 
 ## Running locally
 

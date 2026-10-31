@@ -8,9 +8,3 @@ beneficiaries:
   label_fr: Bénéficiaires directs
   source: "Carried over from the Power BI report (measure [Benef]). Add the source document."
 
-anticipated_co2:
-  value: 168000000
-  unit: tCO2e
-  label: Anticipated emission reductions (portfolio)
-  label_fr: Réductions d'émissions attendues (portefeuille)
-  source: "Carried over from the Power BI report (measure [Anticipated tCO2 sequestration])."
