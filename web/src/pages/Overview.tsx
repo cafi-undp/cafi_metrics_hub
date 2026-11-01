@@ -3,7 +3,7 @@ import { useApp } from "../lib/state";
 import { useFiltered } from "../lib/hooks";
 import { nameOf, t } from "../lib/i18n";
 import {
-  activeIn, byKey, co2Aggregate, indicatorAggs, outcomeAchievement, sumUnit, valueAt,
+  activeIn, byKey, co2Aggregate, countryCount, indicatorAggs, outcomeAchievement, portfolioCounts, sumUnit, valueAt,
 } from "../lib/model";
 import { compact, num, pct, signed, tco2, withUnit } from "../lib/format";
 import { outcomeHex, outcomeVar, textOn } from "../lib/colors";
@@ -47,7 +47,10 @@ export function Overview() {
   const progIds = new Set(records.map((r) => r.programme));
   const active = [...progIds].filter((id) => activeIn(ix.programmes.get(id)!, year)).length;
   const partners = new Set(records.map((r) => r.partner)).size;
-  const countries = new Set(records.map((r) => ix.countryOf(r))).size;
+  const where = countryCount(ix, records.map((r) => ix.countryOf(r)));
+  // Same project counts as the Portfolio page; a partner filter has no project equivalent, so no total then.
+  const pc = useMemo(() => portfolioCounts(ix, filters), [ix, filters]);
+  const linkedHere = pc.linked.filter((p) => p.programmes.some((id) => progIds.has(id))).length;
   const net = co2.intervention.expected;
   const target = co2.intervention.target; // the programmes' final targets, in carbon
   const mega = net >= 1e6;
@@ -86,7 +89,7 @@ export function Overview() {
   const mapMax = mapData[0]?.value ?? 0;
   const mapFmt = (v: number) => mapMetric === "ha" ? `${compact(v)} ha` : mapMetric === "programmes" ? `${v}` : tco2(v);
   const isoToCountry = new Map(m.countries.map((c) => [c.iso, c.id]));
-  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Programmes reporting") : t("Net GHG benefit expected, full cycle");
+  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Results programmes") : t("Net GHG benefit expected, full cycle");
   const mapEmpty = mapMetric === "ha" ? t("Member state, no hectares reported") : mapMetric === "programmes" ? t("Member state, no programme reporting") : t("Member state, no GHG estimate");
   // Programmes without a country (regional) cannot be placed on the map.
   const regional = useMemo(() => [...new Set(records.filter((r) => !ix.countries.get(ix.countryOf(r))?.iso).map((r) => r.programme))].map((id) => ix.programmes.get(id)).filter(Boolean) as Programme[], [records, ix]);
@@ -119,8 +122,11 @@ export function Overview() {
           <div className="hero-tiles">
             <div className="hero-tile">
               <div className="v"><CountUp value={progIds.size} format={(v) => num(v)} /></div>
-              <div className="l">{t("Programmes reporting")}</div>
-              <div className="d">{active} {t("active in")} {year}</div>
+              <div className="l">{t("Results programmes")}</div>
+              <div className="d">{active} {t("active in")} {year} · <Link to={{ page: "portfolio" }} className="hero-link">
+                {filters.partners.length
+                  ? fill(t("linked to {n} MPTF projects"), { n: linkedHere })
+                  : fill(t("linked to {n} of {total} MPTF projects"), { n: linkedHere, total: pc.projects.length })}</Link></div>
             </div>
             <div className="hero-tile">
               <div className="v"><CountUp value={hectares} format={(v) => compact(v)} /></div>
@@ -135,7 +141,7 @@ export function Overview() {
             <div className="hero-tile">
               <div className="v"><CountUp value={partners} format={(v) => num(v)} /></div>
               <div className="l">{t("Implementing partners")}</div>
-              <div className="d">{countries} {t("Countries").toLowerCase()}</div>
+              <div className="d">{where.countries} {t(where.countries === 1 ? "country" : "Countries").toLowerCase()}{where.regional ? ` + ${t("regional")}` : ""}</div>
             </div>
           </div>
         </div>

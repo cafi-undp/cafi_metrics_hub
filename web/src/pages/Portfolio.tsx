@@ -7,7 +7,8 @@ import { Chart } from "../components/Chart";
 import { Link } from "../components/Shell";
 import { ChartCard, CountUp, DataTable, Legend, Meter, MiniMeter, type Column } from "../components/ui";
 import { typeShort } from "../components/coverage";
-import { coverage, projectRecords } from "../lib/model";
+import { coverage, portfolioCounts, projectRecords } from "../lib/model";
+import { fill } from "../lib/insights";
 import type { Project } from "../lib/types";
 
 // The two trust funds take the first and third palette slots (validated as a pair).
@@ -43,6 +44,10 @@ export function Portfolio() {
   const sum = (k: "approved" | "transferred" | "expenditure") => counted.reduce((s, p) => s + p[k], 0);
   const approved = sum("approved"), transferred = sum("transferred"), spent = sum("expenditure");
   const linked = counted.filter((p) => p.programmes.length).length;
+  // Same definitions as the Overview (lib/model.ts portfolioCounts).
+  const all = useMemo(() => portfolioCounts(ix, { countries: [], programmes: [] }), [ix]);
+  const scope = useMemo(() => portfolioCounts(ix, filters), [ix, filters]);
+  const linkedProgrammes = new Set(counted.flatMap((p) => p.programmes)).size;
   const transfers = projects.filter((p) => p.passThrough);
   const expected = counted.filter((p) => p.programmes.length).reduce((s, p) => s + (cov.get(p.id)?.expected ?? 0), 0);
   const reported = counted.filter((p) => p.programmes.length).reduce((s, p) => s + (cov.get(p.id)?.reported ?? 0), 0);
@@ -62,7 +67,7 @@ export function Portfolio() {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">MPTF Gateway · CAFI & FONAREDD · {m.projects.length} {t("projects")}</div>
+          <div className="eyebrow">MPTF Gateway · CAFI & FONAREDD · {all.projects.length} {t("projects")}{all.transfers.length ? ` + ${fill(t(all.transfers.length === 1 ? "{n} fund-to-fund transfer" : "{n} fund-to-fund transfers"), { n: all.transfers.length })}` : ""}</div>
           <h1>{t("Portfolio")}</h1>
           <p>{t("Every project financed by the CAFI and FONAREDD trust funds, with budgets and status, linked to the results it reports.")}</p>
         </div>
@@ -112,6 +117,8 @@ export function Portfolio() {
           <div className="v">{linked}<small>/ {counted.length}</small></div>
           <Meter value={counted.length ? linked / counted.length : null} color="var(--accent)"
             left={<>{t("projects linked to a results programme")}</>} />
+          <div className="d">{fill(t("through {n} results programmes"), { n: linkedProgrammes })}{scope.unlinked.length > 0 && !fund && !state && !type && !q.trim()
+            ? <> · <Link to={{ page: "quality" }}>{fill(t(scope.unlinked.length === 1 ? "{n} programme not linked to a project yet" : "{n} programmes not linked to a project yet"), { n: scope.unlinked.length })}</Link></> : null}</div>
           {expected > 0 && <div className="d">{reported} / {expected} {t("expected indicators reported")}</div>}
         </div>
       </div>
@@ -199,7 +206,7 @@ export function Portfolio() {
       </section>
 
       <section className="section">
-        <div className="section-head"><h2>{t("Projects")}</h2><span className="muted small">{projects.length} · {t("Year and partner filters do not apply to budgets.")}</span></div>
+        <div className="section-head"><h2>{t("Projects")}</h2><span className="muted small">{counted.length} {t(counted.length === 1 ? "project" : "projects")}{transfers.length ? ` + ${fill(t(transfers.length === 1 ? "{n} fund-to-fund transfer" : "{n} fund-to-fund transfers"), { n: transfers.length })}` : ""} · {t("Year and partner filters do not apply to budgets.")}</span></div>
         <DataTable rows={projects} initialSort={{ key: "a", dir: -1 }} cols={[
           { key: "id", label: "MPTF", numeric: true, value: (p) => p.id, width: 70 },
           { key: "n", label: t("Project"), value: (p) => p.short || p.name, render: (p) => (

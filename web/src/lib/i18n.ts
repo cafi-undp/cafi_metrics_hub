@@ -1,6 +1,18 @@
 export type Lang = "en" | "fr";
 
 const fr: Record<string, string> = {
+  "programme": "programme",
+  "project": "projet",
+  "Results programmes": "Programmes de résultats",
+  "linked to {n} of {total} MPTF projects": "reliés à {n} des {total} projets MPTF",
+  "linked to {n} MPTF projects": "reliés à {n} projets MPTF",
+  "through {n} results programmes": "via {n} programmes de résultats",
+  "{n} programme not linked to a project yet": "{n} programme pas encore relié à un projet",
+  "{n} programmes not linked to a project yet": "{n} programmes pas encore reliés à un projet",
+  "{n} fund-to-fund transfer": "{n} transfert entre fonds",
+  "{n} fund-to-fund transfers": "{n} transferts entre fonds",
+  "regional": "régional",
+  "country": "pays",
   "Legend": "Légende",
   "Click a country to filter": "Cliquez sur un pays pour filtrer",
   "Click to filter the dashboard": "Cliquer pour filtrer le tableau de bord",
