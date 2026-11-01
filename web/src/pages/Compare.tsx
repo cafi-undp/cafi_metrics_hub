@@ -49,24 +49,24 @@ export function Compare({ id }: { id: string }) {
     <>
       <div className="page-head">
         <div>
-          <div className="eyebrow">{t("Programmes")} · {t("As of")} {filters.year}</div>
-          <h1>{t("Compare programmes")}</h1>
-          <p>{t("Two programmes side by side: results, pace, funding and expected indicators.")}</p>
+          <div className="eyebrow">{t("Projects")} · {t("As of")} {filters.year}</div>
+          <h1>{t("Compare projects")}</h1>
+          <p>{t("Two projects side by side: results, pace, funding and expected indicators.")}</p>
         </div>
       </div>
       <div className="cmp-pick">
         {(["a", "b"] as const).map((s) => (
           <label key={s} className="cmp-select">
             <span className="xsmall muted">{s === "a" ? "A" : "B"}</span>
-            <select className="input" value={(s === "a" ? a : b) ?? ""} onChange={(e) => set(s, e.target.value)} aria-label={`${t("Programme")} ${s.toUpperCase()}`}>
-              <option value="">{t("Choose a programme…")}</option>
+            <select className="input" value={(s === "a" ? a : b) ?? ""} onChange={(e) => set(s, e.target.value)} aria-label={`${t("Project")} ${s.toUpperCase()}`}>
+              <option value="">{t("Choose a project…")}</option>
               {options.map((p) => <option key={p.id} value={p.id}>{p.name}</option>)}
             </select>
           </label>
         ))}
       </div>
 
-      {!(A && B) && <div className="card empty" style={{ marginTop: 16 }}>{t("Choose two programmes to compare.")}</div>}
+      {!(A && B) && <div className="card empty" style={{ marginTop: 16 }}>{t("Choose two projects to compare.")}</div>}
 
       {A && B && (
         <>

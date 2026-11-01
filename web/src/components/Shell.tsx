@@ -10,7 +10,7 @@ import {
 const PAGES: { route: Route; label: string }[] = [
   { route: { page: "" }, label: "Overview" },
   { route: { page: "outcome" }, label: "Outcomes" },
-  { route: { page: "programmes" }, label: "Programmes" },
+  { route: { page: "programmes" }, label: "Projects" },
   { route: { page: "portfolio" }, label: "Portfolio" },
   { route: { page: "climate" }, label: "Climate impact" },
   { route: { page: "quality" }, label: "Data quality" },
@@ -199,10 +199,10 @@ export function FilterBar({ yearOnly = false }: { yearOnly?: boolean }) {
         options={m.countries.map((c) => ({ id: c.id, label: nameOf(c), meta: `${cCount.get(c.id) ?? 0}` }))} />
       <MultiSelect label={t("Partner")} selected={filters.partners} onChange={(partners) => setFilters({ partners })}
         options={m.partners.map((p) => ({ id: p.id, label: p.name, meta: `${pCount.get(p.id) ?? 0}` }))} />
-      <MultiSelect label={t("Programme")} selected={filters.programmes} onChange={(programmes) => setFilters({ programmes })}
+      <MultiSelect label={t("Project")} selected={filters.programmes} onChange={(programmes) => setFilters({ programmes })}
         options={progOpts} />
       </>}
-      {yearOnly && <span className="small muted">{t("This page shows the whole programme; only the year applies.")}</span>}
+      {yearOnly && <span className="small muted">{t("This page shows the whole project; only the year applies.")}</span>}
       {any && !yearOnly && (
         <button className="link-btn" onClick={() => setFilters({ countries: [], partners: [], programmes: [] })}>
           {t("Clear filters")}
@@ -227,10 +227,10 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
 
   const all: Cmd[] = useMemo(() => [
     ...PAGES.map((p) => ({ group: t("Pages"), label: t(p.label), run: () => navigate(p.route) })),
-    { group: t("Pages"), label: t("Compare programmes"), run: () => navigate({ page: "compare" }) },
+    { group: t("Pages"), label: t("Compare projects"), run: () => navigate({ page: "compare" }) },
     ...m.outcomes.map((o) => ({ group: t("Outcomes"), label: nameOf(o), color: outcomeVar(m, o.id), run: () => navigate({ page: "outcome", id: o.id }) })),
     ...m.programmes.map((p) => ({
-      group: t("Programmes"), label: p.name, meta: nameOf(ix.countries.get(p.country)!),
+      group: t("Projects"), label: p.name, meta: nameOf(ix.countries.get(p.country)!),
       run: () => navigate({ page: "programme", id: p.id }),
     })),
     ...m.indicators.map((i) => ({
@@ -271,7 +271,7 @@ export function CommandPalette({ onClose }: { onClose: () => void }) {
           if (e.key === "ArrowUp") { e.preventDefault(); setActive((a) => Math.max(0, a - 1)); }
           if (e.key === "Enter" && shown[active]) run(shown[active]);
         }}>
-        <input autoFocus placeholder={t("Search programmes, indicators, countries…")} value={q} onChange={(e) => setQ(e.target.value)}
+        <input autoFocus placeholder={t("Search projects, indicators, countries…")} value={q} onChange={(e) => setQ(e.target.value)}
           role="combobox" aria-expanded aria-controls="cmd-list" aria-autocomplete="list" aria-activedescendant={shown[active] ? `cmd-${active}` : undefined} />
         <ul id="cmd-list" ref={listRef} role="listbox">
           {shown.map((c, i) => {

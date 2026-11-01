@@ -21,7 +21,7 @@ export function ProgrammeDetail({ id }: { id: string }) {
   const aggs = useMemo(() => indicatorAggs(ix, recs, yi), [ix, recs, yi]);
 
   if (!p) {
-    return <div className="card empty" style={{ marginTop: 24 }}>{t("Programme not found.")} <Link to={{ page: "programmes" }}>{t("Programmes")}</Link></div>;
+    return <div className="card empty" style={{ marginTop: 24 }}>{t("Project not found.")} <Link to={{ page: "programmes" }}>{t("Projects")}</Link></div>;
   }
   const achievement = outcomeAchievement(aggs);
   const status = statusOf(achievement, p.start, p.end, filters.year);
@@ -37,7 +37,7 @@ export function ProgrammeDetail({ id }: { id: string }) {
       <div className="page-head">
         <div>
           <div className="eyebrow">
-            <Link to={{ page: "programmes" }} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><IconLeft width={14} height={14} />{t("Programmes")}</Link>
+            <Link to={{ page: "programmes" }} style={{ display: "inline-flex", alignItems: "center", gap: 4 }}><IconLeft width={14} height={14} />{t("Projects")}</Link>
             · {t("As of")} {filters.year}
           </div>
           <h1>{p.name}</h1>

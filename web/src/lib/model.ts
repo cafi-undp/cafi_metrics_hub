@@ -211,6 +211,43 @@ export function statusOf(achievement: number | null, start: number | null, end: 
   return "off-track";
 }
 
+/**
+ * Counts shown on several pages, defined once so they always agree.
+ * - Results programmes: programmes with rows in the results workbook (year-independent).
+ * - Projects: MPTF projects, without fund-to-fund transfers (listed, never counted).
+ * - Linked: projects that report results through a programme, and the programmes they report through.
+ * Country and programme filters apply to projects; partner and year filters do not (MPTF partner names
+ * differ from the results workbook, and budgets are life-of-project).
+ */
+export interface PortfolioCounts {
+  projects: Project[];       // counted projects under the country / programme filters
+  linked: Project[];         // of which report results
+  transfers: Project[];      // fund-to-fund transfers under the same filters
+  programmes: string[];      // results programmes under the filters
+  unlinked: string[];        // of which not yet linked to an MPTF project
+}
+
+export function portfolioCounts(ix: Index, f: { countries: string[]; programmes: string[] }): PortfolioCounts {
+  const c = new Set(f.countries), g = new Set(f.programmes);
+  const inScope = ix.m.projects.filter((p) =>
+    (!c.size || c.has(p.country)) && (!g.size || p.programmes.some((x) => g.has(x))));
+  const projects = inScope.filter((p) => !p.passThrough);
+  const programmes = ix.m.programmes.filter((p) => (!c.size || c.has(p.country)) && (!g.size || g.has(p.id)));
+  return {
+    projects,
+    linked: projects.filter((p) => p.programmes.length),
+    transfers: inScope.filter((p) => p.passThrough),
+    programmes: programmes.map((p) => p.id),
+    unlinked: programmes.filter((p) => !p.mptf.length).map((p) => p.id),
+  };
+}
+
+/** Countries among the given ids, leaving out "Regional" (a programme scope, not a country). */
+export function countryCount(ix: Index, ids: Iterable<string>): { countries: number; regional: boolean } {
+  const all = [...new Set(ids)];
+  return { countries: all.filter((id) => ix.countries.get(id)?.iso).length, regional: all.some((id) => id && !ix.countries.get(id)?.iso) };
+}
+
 export function activeIn(p: Programme, year: number): boolean {
   return (p.start ?? -Infinity) <= year && year <= (p.end ?? Infinity);
 }

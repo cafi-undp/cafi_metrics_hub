@@ -75,10 +75,10 @@ export function ProjectDetail({ id }: { id: string }) {
             : <div className="d">{t("Not classified in the reference workbook.")}</div>}
         </div>
         <div className="card tile">
-          <div className="l">{t("Results programme")}</div>
+          <div className="l">{t("Reports results as")}</div>
           {programmes.length
             ? programmes.map((pr) => <div key={pr.id} style={{ marginTop: 6 }}><Link to={{ page: "programme", id: pr.id }}><b>{pr.name}</b></Link></div>)
-            : <div className="d" style={{ marginTop: 8 }}>{t("Not linked to a results programme yet (config/programmes.yml).")}</div>}
+            : <div className="d" style={{ marginTop: 8 }}>{t("Does not report results yet (config/programmes.yml).")}</div>}
           {programmes.length > 0 && <div className="d">{recs.length} {t("rows")} · {new Set(recs.map((r) => r.indicator)).size} {t("indicators")}</div>}
         </div>
       </div>

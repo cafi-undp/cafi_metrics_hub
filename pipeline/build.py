@@ -214,8 +214,8 @@ def normalise(ds: Dataset, config: Config) -> Dataset:
     for _, grp in df.groupby(df["programme"].str.casefold()):
         spellings = grp["programme"].value_counts()
         if len(spellings) > 1:
-            rep.warning("programme-case", "Inconsistent programme spelling",
-                        "The same programme is written in more than one way; the most frequent spelling is used.",
+            rep.warning("programme-case", "Inconsistent project spelling",
+                        "The same project is written in more than one way; the most frequent spelling is used.",
                         [{"value": " / ".join(spellings.index), "field": "programme"}])
         for s in spellings.index:
             pcanon[s] = spellings.index[0]
@@ -224,8 +224,8 @@ def normalise(ds: Dataset, config: Config) -> Dataset:
     for name in df["programme"].unique():
         slug = slugify(name)
         if slug in slugs and slugs[slug] != name:
-            rep.error("programme-id", "Two programmes share the same identifier",
-                      "Programme names must differ by more than punctuation or accents.",
+            rep.error("programme-id", "Two projects share the same identifier",
+                      "Project names must differ by more than punctuation or accents.",
                       [{"value": f"{slugs[slug]} / {name}", "field": "programme"}])
         slugs[slug] = name
 
@@ -314,7 +314,7 @@ def quality_checks(ds: Dataset, config: Config) -> None:
     dup = df[df.duplicated(["programme", "partner", "code", "label"], keep=False)]
     if len(dup):
         rep.warning("duplicate", "Duplicate rows",
-                    "Same programme, partner, indicator and sub-indicator appear more than once; "
+                    "Same project, partner, indicator and sub-indicator appear more than once; "
                     "both are kept and added together.",
                     [{"row": int(r.row), "programme": r.programme, "indicator": r.indicator,
                       "detail": r.label} for r in dup.itertuples()])
@@ -388,10 +388,10 @@ def link_projects(programmes: list[dict], projects: list[dict], config: Config, 
             unlinked.append({"programme": prog["name"]})
     if missing and projects:
         rep.warning("mptf-missing", "MPTF project id not found",
-                    "config/programmes.yml links these programmes to an id that is not in the project list.",
+                    "config/programmes.yml links these projects to an id that is not in the MPTF project list.",
                     missing)
     if unlinked and projects:
-        rep.info("mptf-unlinked", "Programmes not linked to an MPTF project",
+        rep.info("mptf-unlinked", "Projects not linked to an MPTF project",
                  "Add the MPTF project id in config/programmes.yml to show budget and status.", unlinked)
 
 
@@ -427,7 +427,7 @@ def classify_projects(projects: list[dict], config: Config, rep: QualityReport) 
 
 def coverage_checks(df: pd.DataFrame, programmes: list[dict], projects: list[dict], config: Config,
                     rep: QualityReport) -> None:
-    """Compare what a programme reports with what its MPTF project(s) are expected to report."""
+    """Compare what a project reports with what its MPTF classification expects it to report."""
     by_id = {p["id"]: p for p in projects}
     reported_by_prog = df.groupby("programme")["code"].agg(lambda s: set(s))
     missing, extra = [], []
@@ -458,8 +458,8 @@ def coverage_checks(df: pd.DataFrame, programmes: list[dict], projects: list[dic
                  missing)
     if extra:
         rep.info("coverage-extra", "Reported indicators outside the project's expected set",
-                 "The programme reports an indicator that its MPTF project is not classified for. "
-                 "Either the classification (13_Projects activities) or the programme link needs a check.",
+                 "The project reports an indicator that its MPTF classification does not include. "
+                 "Either the classification (13_Projects activities) or the MPTF link needs a check.",
                  extra)
 
 
@@ -469,12 +469,12 @@ def carbon_checks(records: list[dict], df: pd.DataFrame, years: list[int], confi
     from pipeline.carbon.cohorts import reversals
     rev, over_buffer, used, monitored = [], [], {}, {}
     names = set(df["programme"].unique())
-    unknown = [{"value": p, "detail": f"{where}: no programme of that name in the workbook"}
+    unknown = [{"value": p, "detail": f"{where}: no project of that name in the workbook"}
                for where, keys in (("strata.yml", config.carbon.strata_programmes), ("overrides.yml", config.carbon.overrides))
                for p in keys if p not in names]
     if unknown:
-        rep.warning("carbon-config-programme", "Carbon: programme name in config not found",
-                    "A programme override in config/carbon falls back to the country default because the name does not match.", unknown)
+        rep.warning("carbon-config-programme", "Carbon: project name in config not found",
+                    "A project override in config/carbon falls back to the country default because the name does not match.", unknown)
     if engine.notes:
         rep.warning("carbon-clm02-cumulative", "Carbon: CLM-02 looks like a running total",
                     "CLM-02 (deforestation in the project area) must be entered as hectares per year. "
@@ -512,16 +512,16 @@ def carbon_checks(records: list[dict], df: pd.DataFrame, years: list[int], confi
                     "of earlier years is overstated until the area recovers.", over_buffer)
     if monitored:
         rep.info("carbon-monitored", "Carbon: monitored data replacing defaults (ex post)",
-                 "These programmes report ENR-02, ENR-03 or CLM-02, or have measured values in config/carbon/overrides.yml; "
+                 "These projects report ENR-02, ENR-03 or CLM-02, or have measured values in config/carbon/overrides.yml; "
                  "their carbon figures use them instead of the defaults.",
                  [{"programme": p, "value": what, "detail": f"{n} row(s)"} for (p, what), n in sorted(monitored.items())])
     if used:
         lib = config.carbon.library
         rep.info("carbon-defaults", "Carbon: defaults waiting for monitoring data",
-                 "These parameters use a default until the monitored indicator is reported for the programme.",
+                 "These parameters use a default until the monitored indicator is reported for the project.",
                  [{"indicator": code, "value": fid,
                    "detail": f"default {lib.raw[fid].get('value', lib.raw[fid].get('by_country', {}).get('default', {}).get('value', '—'))} "
-                             f"→ replaced by {lib.raw[fid]['monitored_by']} · {len(progs)} programme(s)"}
+                             f"→ replaced by {lib.raw[fid]['monitored_by']} · {len(progs)} project(s)"}
                   for (code, fid), progs in sorted(used.items())])
 
 
@@ -641,7 +641,7 @@ def build(input_path: Path, out_dir: Path, config_dir: Path, projects_path: Path
         return 1
     (out_dir / "metrics.json").write_text(
         json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    print(f"Wrote {len(payload['records'])} records for {len(payload['programmes'])} programmes "
+    print(f"Wrote {len(payload['records'])} records for {len(payload['programmes'])} projects "
           f"and {len(projects)} MPTF projects → {out_dir / 'metrics.json'}")
     return 0
 

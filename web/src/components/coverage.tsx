@@ -63,7 +63,7 @@ export function CoverageTable({ rows, yi, showProgrammes = false }: { rows: Cove
         { key: "q", label: t("Requirement"), value: (r) => r.requirement, render: (r) => <RequirementBadge r={r.requirement} basis={r.basis} /> },
         { key: "b", label: t("Basis"), value: (r) => r.basis.replace(/^(Type|Activity): /, (_, k) => `${t(k)}: `) },
         ...(showProgrammes ? [{
-          key: "p", label: t("Programme"),
+          key: "p", label: t("Project"),
           value: (r: CoverageRow) => [...new Set(r.records.map((x) => ix.programmes.get(x.programme)?.name ?? ""))].join(", "),
         }] : []),
         { key: "r", label: t("Reported"), numeric: true, value: (r) => (r.reported ? value(r) : null),

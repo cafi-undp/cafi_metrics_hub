@@ -71,7 +71,7 @@ export function Climate() {
           <h1>{t("Climate impact")}</h1>
           <p>
             {t("Net GHG benefit expected, full cycle")}: <b>{tco2(total.intervention.expected)}</b> ({t("p5–p95 band")} {compact(total.intervention.low, 2)}–{compact(total.intervention.high, 2)}) ·{" "}
-            {total.intervention.target > 0 ? pct(total.intervention.expected / total.intervention.target, 1) : "–"} {t("of what the programmes' final targets would deliver")} ({compact(total.intervention.target)} tCO₂e)<CarbonTip term="target" />.
+            {total.intervention.target > 0 ? pct(total.intervention.expected / total.intervention.target, 1) : "–"} {t("of what the projects' final targets would deliver")} ({compact(total.intervention.target)} tCO₂e)<CarbonTip term="target" />.
           </p>
           <p className="small" style={{ marginTop: 6 }}>
             {ledger === "inventory" ? t("Stock changes within the boundary, no baseline, no netting") : t("Net benefit against a baseline, after leakage and non-permanence buffer")}.<CarbonTip term="ledgers" />
@@ -275,11 +275,11 @@ export function Climate() {
         </div>
         {monitoring.length ? (
           <DataTable rows={monitoring} cols={[
-            { key: "p", label: t("Programme"), value: (r) => r.name, render: (r) => (r.p ? <Link to={{ page: "programme", id: r.p.id }}>{r.name}</Link> : r.name) },
+            { key: "p", label: t("Project"), value: (r) => r.name, render: (r) => (r.p ? <Link to={{ page: "programme", id: r.p.id }}>{r.name}</Link> : r.name) },
             { key: "i", label: t("Monitored"), value: (r) => Object.entries(r.indicators).map(([k, v]) => `${v} → ${k}`).join(", ") || "–" },
             { key: "o", label: t("Overrides"), value: (r) => r.overrides.join(", ") || "–" },
           ] as Column<(typeof monitoring)[number]>[]} />
-        ) : <div className="card small muted">{t("No programme reports ENR-02, ENR-03 or CLM-02 yet, and config/carbon/overrides.yml is empty: every carbon figure is an ex-ante default.")}</div>}
+        ) : <div className="card small muted">{t("No project reports ENR-02, ENR-03 or CLM-02 yet, and config/carbon/overrides.yml is empty: every carbon figure is an ex-ante default.")}</div>}
       </section>
 
       <section className="section">
