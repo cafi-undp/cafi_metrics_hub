@@ -102,7 +102,7 @@ export function Overview() {
         <div className="hero-inner">
           <div>
             <div className="eyebrow">{t("As of")} {year}{m.meta.partialYears.includes(year) ? ` · ${t("partial year")}` : ""}</div>
-            <h1 id="hero-title">{t("Results across Central Africa")}</h1>
+            <h1 id="hero-title">{t("CAFI results in numbers")}</h1>
             <p className="lede">{t("Cumulative results reported by CAFI-funded projects")}.</p>
             <div className="hero-figure">
               <div className="big">

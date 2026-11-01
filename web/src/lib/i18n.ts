@@ -43,7 +43,7 @@ const fr: Record<string, string> = {
   "partial year": "année partielle",
   "Play": "Lecture",
   "Pause": "Pause",
-  "Results across Central Africa": "Résultats en Afrique centrale",
+  "CAFI results in numbers": "Les résultats de CAFI en chiffres",
   "Cumulative results reported by CAFI-funded projects": "Résultats cumulés déclarés par les projets financés par CAFI",
   "Emission reductions committed": "Réductions d'émissions engagées",
   "of what the projects' final targets would deliver": "de ce que les cibles finales des projets livreraient",
