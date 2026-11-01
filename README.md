@@ -18,7 +18,7 @@ config/reference/            │   validate · re-code to standard     static si
 | **Overview** | Expected net GHG benefit against the carbon the programmes' final targets would deliver, with an info icon on every carbon figure explaining what it measures, headline tiles, **What changed in {year}** (three generated statements about the selected year: largest hectare gain, pace and silence, targets reached, climate, first-time reporters), progress per outcome, a map of the six CAFI member states with a circle per country sized by hectares, programmes or CO₂ (click a country to filter; regional programmes are listed under the map), top programmes, hectares over time, and a treemap of where the hectares are |
 | **Brief** | Briefing mode: the key figures and the generated insights as full-width slides for a meeting, driven with ← → and Esc |
 | **Outcomes** | One tab per standard category (GOV, FOR, FIN, LUT, AGR, ENR, CLM, INC, PPL). Each reported indicator with its standard code, tier, result, target, achievement and year-on-year change; trajectory charts; programme ranking; every sub-indicator row with a status; the category's full list of standard indicators, reported or not |
-| **Programmes** | Timeline of all programme periods; cards or table with average achievement, sparkline and on-track status; a detail page per programme, with its MPTF funding (budget, transfers, spending, status) |
+| **Projects** | Timeline of all project periods; cards or table with average achievement, sparkline and on-track status; a detail page per project, with its MPTF funding (budget, transfers, spending, status). The app calls them projects; in the workbook and the configuration they are still the `Programme` column and `config/programmes.yml` |
 | **Compare** | Two programmes side by side (`#/compare/<a>~<b>`): achievement, net GHG benefit, budget, expected indicators, every indicator with its meter, hectares by year |
 | **Fact sheet** | One A4 page per programme (`#/factsheet/<id>`): results against targets, expected standard indicators, funding, claims, hectares over time, data-quality items. **Save as PDF** opens the browser's print dialog; the text stays selectable and the links live |
 | **Portfolio** | All CAFI and FONAREDD projects from the MPTF list: approved budget, transfers, spending, status, by country and start year, and which ones report results |
@@ -154,7 +154,7 @@ pipeline/          build.py (validate + transform), quality.py, fetch_sharepoint
 tests/             pipeline tests (pytest)
 web/src/lib/       data model + aggregation rules (model.ts, tested), insights.ts (tested), i18n, state/URL sync
 web/src/components charts, filters, command palette, tables
-web/src/pages/     Overview, Brief, Outcomes, Programmes, Programme detail, Compare, Fact sheet, Portfolio, Climate, Data quality, Methodology
+web/src/pages/     Overview, Brief, Outcomes, Projects (Programmes.tsx), Project detail, Compare, Fact sheet, Portfolio, Climate, Data quality, Methodology
 web/scripts/       smoke.mjs (Playwright + axe smoke test of the built site)
 .github/workflows/ ci.yml (checks on every push/PR), deploy.yml (publish to Pages)
 ```

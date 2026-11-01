@@ -167,7 +167,7 @@ class CarbonEngine:
                 continue
             dist = Dist("normal", rel95=float(o["rel95"])) if o.get("rel95") else Dist("fixed")
             factors[key] = Factor(id=f.id, value=float(o["value"]), dist=dist, unit=f.unit, tier=3,
-                                  source=str(o.get("source", "programme measurement")), key=f.key, note="override")
+                                  source=str(o.get("source", "project measurement")), key=f.key, note="override")
         return mod, factors
 
     # ── Monte Carlo bands per (indicator, stratum, overrides) ──

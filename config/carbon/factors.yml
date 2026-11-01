@@ -80,7 +80,7 @@ factors:
     unit: years
     dist: {type: triangular, low: 8, high: 12}
     tier: 2
-    source: "Acacia wood-energy systems of the Bateke plateau (Mampu, Ibi); confirm per programme"
+    source: "Acacia wood-energy systems of the Bateke plateau (Mampu, Ibi); confirm per project"
     confirm: true
   horizon:
     value: 20

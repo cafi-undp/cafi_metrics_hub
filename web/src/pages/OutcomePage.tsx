@@ -42,7 +42,7 @@ export function OutcomePage({ id }: { id: string }) {
           <h1>{nameOf(outcome)}</h1>
           <p>
             <span className="pill" style={{ marginRight: 8 }}>{outcome.id} · {t("Outcome")} {outcome.no}</span>
-            {aggs.length} / {catalogue.length} {t("standard indicators reported")} · {new Set(recs.map((r) => r.programme)).size} {t("programmes")}
+            {aggs.length} / {catalogue.length} {t("standard indicators reported")} · {new Set(recs.map((r) => r.programme)).size} {t("projects")}
             {achievement !== null && <> · {t("Achievement")} <b>{pct(achievement)}</b></>}
           </p>
           {outcome.scope && <p className="small" style={{ marginTop: 6 }}>{outcome.scope}</p>}
@@ -91,7 +91,7 @@ export function OutcomePage({ id }: { id: string }) {
             onRowClick={(r) => navigate({ page: "programme", id: r.programme })}
             rows={recs}
             cols={[
-              { key: "p", label: t("Programme"), value: (r) => ix.programmes.get(r.programme)!.name },
+              { key: "p", label: t("Project"), value: (r) => ix.programmes.get(r.programme)!.name },
               { key: "pa", label: t("Partner"), value: (r) => ix.partners.get(r.partner) ?? "" },
               { key: "i", label: t("Indicator"), value: (r) => nameOf(ix.indicators.get(r.indicator)!) },
               { key: "l", label: t("Detail"), value: (r) => r.label },
@@ -195,7 +195,7 @@ export function IndicatorTile({ a, color, lang, yi }: { a: IndicatorAgg; color: 
         </div>
       )}
       <div className="xsmall muted" style={{ marginTop: 8 }}>
-        {a.programmes} {t("programmes")} · {a.targetedRows}/{a.rows} {t("rows with a target")}
+        {a.programmes} {t("projects")} · {a.targetedRows}/{a.rows} {t("rows with a target")}
       </div>
     </div>
   );
@@ -274,10 +274,10 @@ function Ranking({ aggs, code, onCode, yi, year }: { aggs: IndicatorAgg[]; code:
   const color = outcomeVar(m, a.indicator.outcome);
 
   return (
-    <ChartCard title={t("Programme ranking")} sub={`${nameOf(a.indicator)} · ${t("Result and achievement by programme")}`}
+    <ChartCard title={t("Project ranking")} sub={`${nameOf(a.indicator)} · ${t("Result and achievement by project")}`}
       table={{
         cols: [
-          { key: "p", label: t("Programme"), value: (r: (typeof rows)[number]) => r.name, render: (r: (typeof rows)[number]) => <Link to={{ page: "programme", id: r.pid }}>{r.name}</Link> },
+          { key: "p", label: t("Project"), value: (r: (typeof rows)[number]) => r.name, render: (r: (typeof rows)[number]) => <Link to={{ page: "programme", id: r.pid }}>{r.name}</Link> },
           { key: "v", label: t("Result"), numeric: true, value: (r: (typeof rows)[number]) => Math.round(r.value) },
           { key: "t", label: t("Target"), numeric: true, value: (r: (typeof rows)[number]) => r.target },
           { key: "a", label: t("Achievement"), numeric: true, value: (r: (typeof rows)[number]) => (r.ach === null ? null : Math.round(r.ach * 100) / 100) },
@@ -295,7 +295,7 @@ function Ranking({ aggs, code, onCode, yi, year }: { aggs: IndicatorAgg[]; code:
       ) : undefined}>
       {(ref) => (<>
         <Legend items={[{ label: t("Result"), color: color }, { label: t("Target"), color: "var(--ink)" }]} />
-        <Chart height={Math.max(160, rows.length * 34 + 40)} label="Programme ranking" chartRef={ref} deps={[rows, code]}
+        <Chart height={Math.max(160, rows.length * 34 + 40)} label="Project ranking" chartRef={ref} deps={[rows, code]}
           onClick={(p) => { const r = rows[p.dataIndex]; if (r) navigate({ page: "programme", id: r.pid }); }}
           option={(tk) => {
             const c = outcomeHex(m, tk, a.indicator.outcome);

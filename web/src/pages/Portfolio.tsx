@@ -47,7 +47,6 @@ export function Portfolio() {
   // Same definitions as the Overview (lib/model.ts portfolioCounts).
   const all = useMemo(() => portfolioCounts(ix, { countries: [], programmes: [] }), [ix]);
   const scope = useMemo(() => portfolioCounts(ix, filters), [ix, filters]);
-  const linkedProgrammes = new Set(counted.flatMap((p) => p.programmes)).size;
   const transfers = projects.filter((p) => p.passThrough);
   const expected = counted.filter((p) => p.programmes.length).reduce((s, p) => s + (cov.get(p.id)?.expected ?? 0), 0);
   const reported = counted.filter((p) => p.programmes.length).reduce((s, p) => s + (cov.get(p.id)?.reported ?? 0), 0);
@@ -116,9 +115,9 @@ export function Portfolio() {
           <div className="l">{t("Reporting results")}</div>
           <div className="v">{linked}<small>/ {counted.length}</small></div>
           <Meter value={counted.length ? linked / counted.length : null} color="var(--accent)"
-            left={<>{t("projects linked to a results programme")}</>} />
-          <div className="d">{fill(t("through {n} results programmes"), { n: linkedProgrammes })}{scope.unlinked.length > 0 && !fund && !state && !type && !q.trim()
-            ? <> · <Link to={{ page: "quality" }}>{fill(t(scope.unlinked.length === 1 ? "{n} programme not linked to a project yet" : "{n} programmes not linked to a project yet"), { n: scope.unlinked.length })}</Link></> : null}</div>
+            left={<>{t("MPTF projects that report results")}</>} />
+          {scope.unlinked.length > 0 && !fund && !state && !type && !q.trim() && <div className="d">
+            <Link to={{ page: "quality" }}>{fill(t(scope.unlinked.length === 1 ? "{n} reporting project not yet linked to an MPTF project" : "{n} reporting projects not yet linked to an MPTF project"), { n: scope.unlinked.length })}</Link></div>}
           {expected > 0 && <div className="d">{reported} / {expected} {t("expected indicators reported")}</div>}
         </div>
       </div>
@@ -230,7 +229,7 @@ export function Portfolio() {
             value: (p) => (p.programmes.length && cov.get(p.id)?.expected ? cov.get(p.id)!.reported / cov.get(p.id)!.expected : null),
             render: (p) => {
               const c = cov.get(p.id);
-              if (!c || !c.expected || !p.programmes.length) return <span className="muted" title={!c?.expected ? t("No expected indicators") : t("Not linked to a results programme")}>–</span>;
+              if (!c || !c.expected || !p.programmes.length) return <span className="muted" title={!c?.expected ? t("No expected indicators") : t("Does not report results yet")}>–</span>;
               return <span className="mini-meter" title={`${c.reported} / ${c.expected} ${t("expected indicators reported")}`}>
                 <span className="track" style={{ background: "color-mix(in srgb, var(--accent) 16%, var(--surface-sunk))" }}>
                   <span className="fill" style={{ width: `${(c.reported / c.expected) * 100}%`, background: "var(--accent)" }} />

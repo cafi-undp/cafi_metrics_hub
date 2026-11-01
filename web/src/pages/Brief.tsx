@@ -22,7 +22,7 @@ export function Brief() {
   const spent = counted.reduce((s, p) => s + p.expenditure, 0);
 
   const slides = [
-    { k: t("Hectares"), big: compact(hectares), unit: unitLabel("ha", lang), text: `${t("restored, used sustainably or protected by")} ${progs} ${t(progs === 1 ? "programme" : "programmes")} · ${t("As of")} ${year}`, to: { page: "" } as const },
+    { k: t("Hectares"), big: compact(hectares), unit: unitLabel("ha", lang), text: `${t("restored, used sustainably or protected by")} ${progs} ${t(progs === 1 ? "project" : "projects")} · ${t("As of")} ${year}`, to: { page: "" } as const },
     { k: t("Climate"), big: compact(co2.intervention.expected, 2), unit: "tCO₂e", text: `${t("Net GHG benefit expected, full cycle")} · ${t("p5–p95 band")} ${compact(co2.intervention.low, 2)}–${compact(co2.intervention.high, 2)} · ${t("Removals in the inventory ledger")} ${compact(co2.inventory.expected, 2)} · ${t("Realised to date")} ${compact(co2.intervention.realised, 2)}`, to: { page: "climate" } as const },
     { k: t("Finance"), big: `$${compact(approved)}`, unit: "", text: `${t("approved across")} ${counted.length} ${t(counted.length === 1 ? "project" : "projects")} · ${pct(approved ? spent / approved : null)} ${t("spent")}`, to: { page: "portfolio" } as const },
     ...insights.map((i) => ({ k: i.eyebrow, big: "", unit: "", text: i.text, to: i.to })),

@@ -103,7 +103,7 @@ export function AfricaMap({ data, metricLabel, emptyLabel, height, onSelect, sel
   const sel = new Set(selected);
 
   return (
-    <Chart height={height} label={`${t("Where programmes work")}: ${metricLabel}`} chartRef={chartRef}
+    <Chart height={height} label={`${t("Where projects work")}: ${metricLabel}`} chartRef={chartRef}
       deps={[data, metricLabel, emptyLabel, selected.join(), rMax]}
       onClick={(p) => {
         const d = byName.get(p.name);

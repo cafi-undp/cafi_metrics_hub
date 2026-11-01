@@ -69,8 +69,8 @@ export function Programmes() {
       <div className="page-head">
         <div>
           <div className="eyebrow">{t("As of")} {filters.year}</div>
-          <h1>{t("Programmes")}</h1>
-          <p>{list.length} {t("programmes")}</p>
+          <h1>{t("Projects")}</h1>
+          <p>{list.length} {t("projects")}</p>
         </div>
         <div style={{ display: "flex", gap: 8, flexWrap: "wrap", alignItems: "center" }}>
           <Link to={{ page: "compare" }} className="chip-btn">{t("Compare")} ⇄</Link>
@@ -121,7 +121,7 @@ export function Programmes() {
             rows={list}
             onRowClick={(s) => navigate({ page: "programme", id: s.p.id })}
             cols={[
-              { key: "n", label: t("Programme"), value: (s) => s.p.name },
+              { key: "n", label: t("Project"), value: (s) => s.p.name },
               { key: "c", label: t("Country"), value: (s) => s.country },
               { key: "pa", label: t("Partner"), value: (s) => s.partners },
               { key: "pe", label: t("Period"), value: (s) => s.p.start, render: (s) => `${s.p.start}–${s.p.end}` },
@@ -152,7 +152,7 @@ function Timeline({ list }: { list: ProgSummary[] }) {
   return (
     <section className="card" aria-label={t("Timeline")}>
       <div className="card-head">
-        <div><h3>{t("Timeline")}</h3><div className="sub">{t("Programme periods and the selected year")}</div></div>
+        <div><h3>{t("Timeline")}</h3><div className="sub">{t("Project periods and the selected year")}</div></div>
       </div>
       <div className="legend">
         {used.map((o) => <span key={o.id}><i className="dot" style={{ background: outcomeVar(m, o.id) }} />{nameOf(o)}</span>)}

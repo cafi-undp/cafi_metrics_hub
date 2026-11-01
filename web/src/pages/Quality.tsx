@@ -12,7 +12,7 @@ const SEV = {
 
 const qualityCols = (): Column<QualityItem>[] => [
   { key: "row", label: t("Row"), numeric: true, value: (i) => i.row ?? null },
-  { key: "programme", label: t("Programme"), value: (i) => i.programme ?? "" },
+  { key: "programme", label: t("Project"), value: (i) => i.programme ?? "" },
   { key: "indicator", label: t("Indicator"), value: (i) => i.indicator ?? i.field ?? "" },
   { key: "detail", label: t("Detail"), value: (i) => i.detail ?? i.value ?? "" },
 ];

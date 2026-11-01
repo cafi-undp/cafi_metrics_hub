@@ -19,7 +19,7 @@ export function FactSheet({ id }: { id: string }) {
   const yi = yearIndex(m, filters.year);
   const recs = useMemo(() => m.records.filter((r) => r.programme === id), [m, id]);
   const aggs = useMemo(() => indicatorAggs(ix, recs, yi), [ix, recs, yi]);
-  if (!p) return <div className="card empty" style={{ marginTop: 24 }}>{t("Programme not found.")} <Link to={{ page: "programmes" }}>{t("Programmes")}</Link></div>;
+  if (!p) return <div className="card empty" style={{ marginTop: 24 }}>{t("Project not found.")} <Link to={{ page: "programmes" }}>{t("Projects")}</Link></div>;
 
   const ach = outcomeAchievement(aggs);
   const status = statusOf(ach, p.start, p.end, filters.year);
@@ -43,7 +43,7 @@ export function FactSheet({ id }: { id: string }) {
 
       <header className="fs-head">
         <div>
-          <div className="eyebrow">CAFI Metrics Hub · {t("Programme fact sheet")} · {t("As of")} {filters.year}</div>
+          <div className="eyebrow">CAFI Metrics Hub · {t("Project fact sheet")} · {t("As of")} {filters.year}</div>
           <h1>{p.name}</h1>
           <div className="fs-meta">
             <span>{nameOf(ix.countries.get(p.country) ?? { name: p.country })}</span>
@@ -119,7 +119,7 @@ export function FactSheet({ id }: { id: string }) {
             <ul className="fs-list">
               {quality.map((i, k) => <li key={k}><b>{i.title}</b>{i.row ? ` · ${t("Row")} ${num(i.row)}` : ""}{i.detail ? ` · ${i.detail}` : ""}</li>)}
             </ul>
-          ) : <p className="small muted">{t("No warnings for this programme on the last refresh.")}</p>}
+          ) : <p className="small muted">{t("No warnings for this project on the last refresh.")}</p>}
         </section>
       </div>
 

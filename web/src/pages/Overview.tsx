@@ -77,8 +77,8 @@ export function Overview() {
       const partners = new Set(rc.map((r) => r.partner)).size;
       const top = [...byKey(rc, (r) => r.programme).entries()].map(([pid, rs]) => ({ pid, v: metric(rs) })).sort((a, b) => b.v - a.v)[0];
       const lines: [string, string][] = [
-        [`${progs.size}`, t("programmes")], [`${partners}`, t("partners")],
-        ...(top && mapMetric !== "programmes" && top.v > 0 ? [[`${ix.programmes.get(top.pid)?.name ?? top.pid}`, `${t("Largest programme")} · ${fmt(top.v)}`] as [string, string]] : []),
+        [`${progs.size}`, t("projects")], [`${partners}`, t("partners")],
+        ...(top && mapMetric !== "programmes" && top.v > 0 ? [[`${ix.programmes.get(top.pid)?.name ?? top.pid}`, `${t("Largest project")} · ${fmt(top.v)}`] as [string, string]] : []),
       ];
       return { iso: c.iso!, label: nameOf(c), value, display: fmt(value), lines };
     });
@@ -89,8 +89,8 @@ export function Overview() {
   const mapMax = mapData[0]?.value ?? 0;
   const mapFmt = (v: number) => mapMetric === "ha" ? `${compact(v)} ha` : mapMetric === "programmes" ? `${v}` : tco2(v);
   const isoToCountry = new Map(m.countries.map((c) => [c.iso, c.id]));
-  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Results programmes") : t("Net GHG benefit expected, full cycle");
-  const mapEmpty = mapMetric === "ha" ? t("Member state, no hectares reported") : mapMetric === "programmes" ? t("Member state, no programme reporting") : t("Member state, no GHG estimate");
+  const mapLabel = mapMetric === "ha" ? t("Hectares planted, restored or protected") : mapMetric === "programmes" ? t("Projects reporting results") : t("Net GHG benefit expected, full cycle");
+  const mapEmpty = mapMetric === "ha" ? t("Member state, no hectares reported") : mapMetric === "programmes" ? t("Member state, no project reporting") : t("Member state, no GHG estimate");
   // Programmes without a country (regional) cannot be placed on the map.
   const regional = useMemo(() => [...new Set(records.filter((r) => !ix.countries.get(ix.countryOf(r))?.iso).map((r) => r.programme))].map((id) => ix.programmes.get(id)).filter(Boolean) as Programme[], [records, ix]);
 
@@ -103,7 +103,7 @@ export function Overview() {
           <div>
             <div className="eyebrow">{t("As of")} {year}{m.meta.partialYears.includes(year) ? ` · ${t("partial year")}` : ""}</div>
             <h1 id="hero-title">{t("Results across Central Africa")}</h1>
-            <p className="lede">{t("Cumulative results reported by CAFI-funded programmes")}.</p>
+            <p className="lede">{t("Cumulative results reported by CAFI-funded projects")}.</p>
             <div className="hero-figure">
               <div className="big">
                 <CountUp value={net / (mega ? 1e6 : 1e3)} format={(v) => num(v, 1)} /><small>{mega ? "Mt" : "kt"} CO₂e</small>
@@ -113,7 +113,7 @@ export function Overview() {
               <div className="hero-meter">
                 <div className="track"><div className="fill" style={{ width: `${target > 0 ? Math.min(100, (net / target) * 100) : 0}%` }} /></div>
                 <div className="row">
-                  <span>{target > 0 ? pct(net / target, 1) : "–"} {t("of what the programmes' final targets would deliver")}<CarbonTip term="target" light /></span>
+                  <span>{target > 0 ? pct(net / target, 1) : "–"} {t("of what the projects' final targets would deliver")}<CarbonTip term="target" light /></span>
                   <span>{compact(target)} tCO₂e</span>
                 </div>
               </div>
@@ -122,7 +122,7 @@ export function Overview() {
           <div className="hero-tiles">
             <div className="hero-tile">
               <div className="v"><CountUp value={progIds.size} format={(v) => num(v)} /></div>
-              <div className="l">{t("Results programmes")}</div>
+              <div className="l">{t("Projects reporting results")}</div>
               <div className="d">{active} {t("active in")} {year} · <Link to={{ page: "portfolio" }} className="hero-link">
                 {filters.partners.length
                   ? fill(t("linked to {n} MPTF projects"), { n: linkedHere })
@@ -199,7 +199,7 @@ export function Overview() {
       </section>
 
       <section className="section grid g-12">
-        <ChartCard className="span-7" title={t("Where programmes work")} sub={`${mapLabel} · ${t("Click a country to filter")}`}
+        <ChartCard className="span-7" title={t("Where projects work")} sub={`${mapLabel} · ${t("Click a country to filter")}`}
           extra={
             <>
               {filters.countries.length > 0 && (
@@ -210,7 +210,7 @@ export function Overview() {
               <div className="seg" role="group" aria-label={t("Map metric")} style={{ marginRight: 6 }}>
                 {(["ha", "programmes", "co2"] as MapMetric[]).map((k) => (
                   <button key={k} aria-pressed={mapMetric === k} onClick={() => setMapMetric(k)}>
-                    {k === "ha" ? t("Hectares") : k === "programmes" ? t("Programmes") : "CO₂"}
+                    {k === "ha" ? t("Hectares") : k === "programmes" ? t("Projects") : "CO₂"}
                   </button>
                 ))}
               </div>
@@ -238,13 +238,13 @@ export function Overview() {
               <MapLegend label={mapLabel} max={mapMax} fmt={mapFmt} emptyLabel={mapEmpty} />
               {regional.length > 0 && (
                 <div className="map-note">
-                  {fill(t(regional.length === 1 ? "{n} regional programme is not placed on the map:" : "{n} regional programmes are not placed on the map:"), { n: regional.length })}{" "}
+                  {fill(t(regional.length === 1 ? "{n} regional project is not placed on the map:" : "{n} regional projects are not placed on the map:"), { n: regional.length })}{" "}
                   {regional.map((p, i) => <span key={p.id}>{i > 0 && ", "}<Link to={{ page: "programme", id: p.id }}>{p.name}</Link></span>)}
                 </div>
               )}
               {mapMax <= 0 && mapMetric === "ha" && records.length > 0 && (
                 <div className="map-note">
-                  {t("No hectares reported under the current filters.")} <button className="link-btn" onClick={() => setMapMetric("programmes")}>{t("Show programmes instead")}</button>
+                  {t("No hectares reported under the current filters.")} <button className="link-btn" onClick={() => setMapMetric("programmes")}>{t("Show projects instead")}</button>
                 </div>
               )}
               </aside>
@@ -275,11 +275,11 @@ function TopProgrammes({ records, yi }: { records: DataRecord[]; yi: number }) {
   const usedOutcomes = m.outcomes.filter((o) => rows.some((r) => r.byOutcome.get(o.id)));
 
   return (
-    <ChartCard className="span-5" title={t("Top programmes")}
+    <ChartCard className="span-5" title={t("Top projects")}
       sub={`Top 10 · ${t("Hectares planted, restored or protected").toLowerCase()}`}
       table={{
         cols: [
-          { key: "p", label: t("Programme"), value: (r: (typeof rows)[number]) => r.name, render: (r: (typeof rows)[number]) => <Link to={{ page: "programme", id: r.id }}>{r.name}</Link> },
+          { key: "p", label: t("Project"), value: (r: (typeof rows)[number]) => r.name, render: (r: (typeof rows)[number]) => <Link to={{ page: "programme", id: r.id }}>{r.name}</Link> },
           ...usedOutcomes.map((o) => ({ key: o.id, label: nameOf(o), numeric: true, value: (r: (typeof rows)[number]) => Math.round(r.byOutcome.get(o.id) ?? 0) })),
           { key: "t", label: `${t("Total")} (ha)`, numeric: true, value: (r: (typeof rows)[number]) => Math.round(r.total) },
         ] as Column<(typeof rows)[number]>[],
@@ -288,7 +288,7 @@ function TopProgrammes({ records, yi }: { records: DataRecord[]; yi: number }) {
       {(ref) => rows.length ? (
         <>
           {usedOutcomes.length > 1 && <LegendRow outcomes={usedOutcomes.map((o) => o.id)} />}
-          <Chart height={Math.max(220, rows.length * 36 + 30)} label="Top programmes by hectares" chartRef={ref} deps={[rows]}
+          <Chart height={Math.max(220, rows.length * 36 + 30)} label="Top projects by hectares" chartRef={ref} deps={[rows]}
             onClick={(p) => { const r = rows[p.dataIndex]; if (r) navigate({ page: "programme", id: r.id }); }}
             option={(tk) => ({
               grid: { left: 8, right: 56, top: 4, bottom: 4, containLabel: true },
@@ -416,18 +416,18 @@ function HectareTreemap({ records, yi }: { records: DataRecord[]; yi: number }) 
   const flat = tree.flatMap((o) => o.children.flatMap((i) => i.children.map((p) => ({ o: o.name, i: i.name, p: p.name, v: p.value }))));
 
   return (
-    <ChartCard className="span-5" title={t("Where the hectares are")} sub={t("By outcome, indicator and programme")}
+    <ChartCard className="span-5" title={t("Where the hectares are")} sub={t("By outcome, indicator and project")}
       table={{
         cols: [
           { key: "o", label: t("Outcome"), value: (r: (typeof flat)[number]) => r.o },
           { key: "i", label: t("Indicator"), value: (r: (typeof flat)[number]) => r.i },
-          { key: "p", label: t("Programme"), value: (r: (typeof flat)[number]) => r.p },
+          { key: "p", label: t("Project"), value: (r: (typeof flat)[number]) => r.p },
           { key: "v", label: "ha", numeric: true, value: (r: (typeof flat)[number]) => Math.round(r.v) },
         ] as Column<(typeof flat)[number]>[],
         rows: flat,
       }}>
       {(ref) => tree.length ? (
-        <Chart height={360} label="Treemap of hectares by outcome, indicator and programme" chartRef={ref} deps={[tree]}
+        <Chart height={360} label="Treemap of hectares by outcome, indicator and project" chartRef={ref} deps={[tree]}
           onClick={(p) => {
             const id = (p.data as { id?: string })?.id ?? "";
             if (id.includes("|")) navigate({ page: "programme", id: id.split("|")[1] });

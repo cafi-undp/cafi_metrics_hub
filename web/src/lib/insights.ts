@@ -61,7 +61,7 @@ export function buildInsights(m: Metrics, ix: Index, records: DataRecord[], yi: 
   }
   if (off > 0 || silent) {
     const parts: string[] = [];
-    if (off > 0) parts.push(fill(t(off === 1 ? "{n} programme is below half of its expected pace" : "{n} programmes are below half of their expected pace"), { n: off }));
+    if (off > 0) parts.push(fill(t(off === 1 ? "{n} project is below half of its expected pace" : "{n} projects are below half of their expected pace"), { n: off }));
     if (silent) parts.push(fill(t("{programme} has not reported a result since {year}"), { programme: progName(silent.pid), year: m.meta.years[silent.last] }));
     out.push({ key: "pace", kind: "pace", priority: 2, eyebrow: t("Off track"), text: parts.join("; ") + ".", to: silent ? { page: "programme", id: silent.pid } : { page: "programmes" } });
   }
@@ -74,7 +74,7 @@ export function buildInsights(m: Metrics, ix: Index, records: DataRecord[], yi: 
     const a = passed.sort((x, y) => (y.achievement ?? 0) - (x.achievement ?? 0))[0];
     out.push({
       key: "target", kind: "target", priority: 3, eyebrow: t("Target reached"),
-      text: fill(t("{indicator} passed its final target this year, at {pct} across {n} programmes."), { indicator: nameOfLang(a.indicator, lang), pct: pct(a.achievement), n: a.programmes }),
+      text: fill(t("{indicator} passed its final target this year, at {pct} across {n} projects."), { indicator: nameOfLang(a.indicator, lang), pct: pct(a.achievement), n: a.programmes }),
       to: { page: "outcome", id: a.indicator.outcome },
     });
   }
@@ -102,7 +102,7 @@ export function buildInsights(m: Metrics, ix: Index, records: DataRecord[], yi: 
   if (first.length && yi > 0) {
     out.push({
       key: "new", kind: "new", priority: 5, eyebrow: t("New this year"),
-      text: fill(t(first.length === 1 ? "{names} reported results for the first time." : "{n} programmes reported results for the first time: {names}."), { n: first.length, names: first.slice(0, 3).join(", ") + (first.length > 3 ? "…" : "") }),
+      text: fill(t(first.length === 1 ? "{names} reported results for the first time." : "{n} projects reported results for the first time: {names}."), { n: first.length, names: first.slice(0, 3).join(", ") + (first.length > 3 ? "…" : "") }),
       to: { page: "programmes" },
     });
   }
